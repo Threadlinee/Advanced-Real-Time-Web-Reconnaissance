@@ -1,0 +1,2223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSINT STRIKER - Ultimate Intelligence Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Enhanced 3D Scrollytelling */
+        .scroll-container {
+            height: 100vh;
+            overflow-y: scroll;
+            perspective: 2000px;
+            scroll-snap-type: y mandatory;
+            transform-style: preserve-3d;
+        }
+
+        .section {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            scroll-snap-align: start;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .section:nth-child(even) {
+            transform: rotateY(-2deg) translateZ(-50px);
+        }
+
+        .section:nth-child(odd) {
+            transform: rotateY(2deg) translateZ(-50px);
+        }
+
+        .section.active {
+            transform: rotateY(0deg) translateZ(0px) scale(1.02);
+        }
+
+        /* Matrix Background */
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: radial-gradient(ellipse at center, #001122 0%, #000000 70%);
+            animation: backgroundPulse 8s ease-in-out infinite;
+        }
+
+        @keyframes backgroundPulse {
+            0%, 100% { background: radial-gradient(ellipse at center, #001122 0%, #000000 70%); }
+            50% { background: radial-gradient(ellipse at center, #002211 0%, #000011 70%); }
+        }
+
+        .matrix-rain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.15;
+        }
+
+        .matrix-drop {
+            position: absolute;
+            color: #00ff41;
+            font-family: monospace;
+            font-size: 18px;
+            animation: fall linear infinite;
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(-100vh) rotateX(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotateX(360deg); opacity: 0; }
+        }
+
+        /* Hero Section with Morphing */
+        .hero {
+            background: linear-gradient(135deg, #000428 0%, #004e92 50%, #000428 100%);
+            background-size: 200% 200%;
+            animation: morphBackground 6s ease-in-out infinite;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes morphBackground {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(0, 255, 65, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 0, 128, 0.05) 0%, transparent 50%);
+            animation: morphOverlay 8s ease-in-out infinite;
+        }
+
+        @keyframes morphOverlay {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            33% { transform: rotate(120deg) scale(1.1); }
+            66% { transform: rotate(240deg) scale(0.9); }
+        }
+
+        .hero-title {
+            font-size: clamp(3rem, 8vw, 8rem);
+            background: linear-gradient(45deg, #00ff41, #00d4ff, #ff0080, #ffaa00);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientMorph 4s ease-in-out infinite;
+            text-shadow: 0 0 50px rgba(0, 255, 65, 0.5);
+            margin-bottom: 1rem;
+            transform: translateZ(100px);
+            position: relative;
+        }
+
+        .hero-title::after {
+            content: 'OSINT STRIKER';
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3s linear infinite;
+        }
+
+        @keyframes gradientMorph {
+            0%, 100% { 
+                background-position: 0% 50%; 
+                transform: translateZ(100px) rotateX(0deg);
+            }
+            25% { 
+                background-position: 100% 0%; 
+                transform: translateZ(120px) rotateX(5deg);
+            }
+            50% { 
+                background-position: 100% 100%; 
+                transform: translateZ(100px) rotateX(0deg);
+            }
+            75% { 
+                background-position: 0% 100%; 
+                transform: translateZ(120px) rotateX(-5deg);
+            }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1.2rem, 3vw, 2rem);
+            color: #00d4ff;
+            margin-bottom: 2rem;
+            transform: translateZ(50px);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateZ(50px) translateY(0px); }
+            50% { transform: translateZ(50px) translateY(-10px); }
+        }
+
+        /* Enhanced Navigation */
+        .nav-menu {
+            position: fixed;
+            top: 50%;
+            right: 30px;
+            transform: translateY(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .nav-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            position: relative;
+            border: 2px solid transparent;
+        }
+
+        .nav-dot::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00ff41, #00d4ff);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .nav-dot.active {
+            background: #00ff41;
+            box-shadow: 0 0 20px #00ff41, 0 0 40px #00ff41;
+            transform: scale(1.5);
+        }
+
+        .nav-dot.active::before {
+            opacity: 1;
+        }
+
+        .nav-dot:hover {
+            transform: scale(1.3);
+            background: rgba(0, 255, 65, 0.7);
+        }
+
+        /* Tutorial Section with Glass Morphism */
+        .tutorial {
+            background: linear-gradient(135deg, 
+                rgba(26, 26, 46, 0.8) 0%, 
+                rgba(22, 33, 62, 0.8) 50%,
+                rgba(26, 26, 46, 0.8) 100%);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 4rem 2rem;
+        }
+
+        .tutorial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1400px;
+            margin: 2rem auto;
+        }
+
+        .tutorial-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 20px;
+            padding: 30px;
+            transform: translateZ(20px) rotateX(5deg);
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .tutorial-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(0, 255, 65, 0.1), 
+                rgba(0, 212, 255, 0.1),
+                transparent);
+            transition: left 0.8s ease;
+        }
+
+        .tutorial-card:hover::before {
+            left: 100%;
+        }
+
+        .tutorial-card:hover {
+            transform: translateZ(40px) rotateX(0deg) scale(1.05);
+            box-shadow: 
+                0 20px 40px rgba(0, 255, 65, 0.2),
+                0 0 60px rgba(0, 255, 65, 0.1);
+            border-color: #00ff41;
+        }
+
+        .tutorial-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+            animation: iconBounce 2s ease-in-out infinite;
+        }
+
+        @keyframes iconBounce {
+            0%, 100% { transform: translateY(0px) rotateZ(0deg); }
+            50% { transform: translateY(-5px) rotateZ(5deg); }
+        }
+
+        .tutorial-title {
+            font-size: 1.5rem;
+            color: #00ff41;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        /* OSINT Tools Section */
+        .osint-tools {
+            background: linear-gradient(135deg, 
+                rgba(45, 27, 105, 0.8) 0%, 
+                rgba(17, 153, 142, 0.8) 50%,
+                rgba(45, 27, 105, 0.8) 100%);
+            backdrop-filter: blur(20px);
+            padding: 4rem 2rem;
+        }
+
+        .tools-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .tool-category {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(15px);
+            transform: translateZ(10px);
+            border: 1px solid rgba(0, 255, 65, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .tool-category:hover {
+            transform: translateZ(20px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        .category-title {
+            color: #00ff41;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            text-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .tool-item {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-item::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, 
+                rgba(0, 255, 65, 0.1), 
+                rgba(0, 212, 255, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .tool-item:hover {
+            transform: translateY(-10px) rotateX(5deg);
+            box-shadow: 
+                0 15px 40px rgba(0, 255, 65, 0.3),
+                0 0 30px rgba(0, 255, 65, 0.2);
+            border-color: #00ff41;
+        }
+
+        .tool-item:hover::after {
+            opacity: 1;
+        }
+
+        /* Scanner Interface */
+        .scanner {
+            background: linear-gradient(135deg, 
+                rgba(102, 125, 182, 0.8) 0%, 
+                rgba(0, 130, 200, 0.8) 40%, 
+                rgba(0, 130, 200, 0.8) 60%, 
+                rgba(102, 125, 182, 0.8) 100%);
+            backdrop-filter: blur(20px);
+            padding: 4rem 2rem;
+        }
+
+        .scanner-interface {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 25px;
+            padding: 3rem;
+            backdrop-filter: blur(30px);
+            transform: translateZ(30px);
+            border: 2px solid rgba(0, 255, 65, 0.3);
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .input-section {
+            margin-bottom: 2rem;
+        }
+
+        .target-input {
+            width: 100%;
+            padding: 20px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(0, 255, 65, 0.5);
+            border-radius: 15px;
+            color: white;
+            font-size: 18px;
+            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .target-input:focus {
+            outline: none;
+            border-color: #00ff41;
+            box-shadow: 
+                0 0 25px rgba(0, 255, 65, 0.4),
+                inset 0 0 20px rgba(0, 255, 65, 0.1);
+            transform: scale(1.02);
+        }
+
+        .target-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .scan-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .option-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, 
+                rgba(0, 255, 65, 0.1), 
+                rgba(0, 212, 255, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .option-card.selected {
+            border-color: #00ff41;
+            background: rgba(0, 255, 65, 0.15);
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0, 255, 65, 0.3);
+        }
+
+        .option-card.selected::before {
+            opacity: 1;
+        }
+
+        .option-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            border-color: rgba(0, 255, 65, 0.7);
+        }
+
+        .scan-btn {
+            width: 100%;
+            padding: 25px;
+            background: linear-gradient(45deg, #00ff41, #00d4ff);
+            border: none;
+            border-radius: 20px;
+            color: #000;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scan-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.3), 
+                transparent);
+            transition: left 0.6s ease;
+        }
+
+        .scan-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 
+                0 20px 50px rgba(0, 255, 65, 0.4),
+                0 0 40px rgba(0, 255, 65, 0.3);
+        }
+
+        .scan-btn:hover::before {
+            left: 100%;
+        }
+
+        .scan-btn:active {
+            transform: translateY(-2px);
+        }
+
+        /* Results Section */
+        .results {
+            background: linear-gradient(135deg, 
+                rgba(67, 67, 67, 0.8) 0%, 
+                rgba(0, 0, 0, 0.9) 100%);
+            backdrop-filter: blur(20px);
+            padding: 4rem 2rem;
+        }
+
+        .results-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 2rem;
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            transform: translateZ(15px);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            backdrop-filter: blur(15px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #00ff41, #00d4ff, #ff0080);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .result-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .result-card:hover {
+            transform: translateZ(30px) scale(1.03);
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.4),
+                0 0 30px rgba(0, 255, 65, 0.2);
+            border-color: #00ff41;
+        }
+
+        .result-type {
+            color: #00ff41;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        .result-data {
+            word-break: break-all;
+            opacity: 0.9;
+            line-height: 1.6;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Terminal Section */
+        .terminal {
+            background: #000;
+            padding: 4rem 2rem;
+        }
+
+        .terminal-window {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #1a1a1a;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 
+                0 30px 80px rgba(0, 0, 0, 0.6),
+                0 0 40px rgba(0, 255, 65, 0.1);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+        }
+
+        .terminal-header {
+            background: linear-gradient(135deg, #333, #444);
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .terminal-button {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .terminal-button:hover {
+            transform: scale(1.2);
+        }
+
+        .btn-close { background: #ff5f56; }
+        .btn-minimize { background: #ffbd2e; }
+        .btn-maximize { background: #27ca3f; }
+
+        .terminal-body {
+            padding: 25px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            height: 450px;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #1a1a1a, #0f0f0f);
+        }
+
+        .terminal-line {
+            margin-bottom: 8px;
+            opacity: 0;
+            animation: typewriter 0.5s ease-in-out forwards;
+            transition: all 0.3s ease;
+        }
+
+        .terminal-line:hover {
+            background: rgba(0, 255, 65, 0.1);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .terminal-line.prompt::before {
+            content: '$ ';
+            color: #00ff41;
+            font-weight: bold;
+        }
+
+        .terminal-line.output {
+            color: #00d4ff;
+            margin-left: 20px;
+        }
+
+        .terminal-line.warning {
+            color: #ffaa00;
+        }
+
+        .terminal-line.error {
+            color: #ff4444;
+        }
+
+        @keyframes typewriter {
+            to { opacity: 1; }
+        }
+
+        /* Enhanced Floating Action Buttons */
+        .fab-container {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .fab {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00ff41, #00d4ff);
+            border: none;
+            color: #000;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 
+                0 8px 25px rgba(0, 255, 65, 0.4),
+                0 0 20px rgba(0, 255, 65, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .fab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .fab:hover {
+            transform: scale(1.15) rotateZ(5deg);
+            box-shadow: 
+                0 15px 40px rgba(0, 255, 65, 0.6),
+                0 0 30px rgba(0, 255, 65, 0.4);
+        }
+
+        .fab:hover::before {
+            transform: translateX(100%);
+        }
+
+        .fab:active {
+            transform: scale(1.05);
+        }
+
+        /* Enhanced Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, 
+                rgba(26, 26, 46, 0.95), 
+                rgba(22, 33, 62, 0.95));
+            padding: 3rem;
+            border-radius: 25px;
+            max-width: 700px;
+            width: 90%;
+            border: 2px solid rgba(0, 255, 65, 0.3);
+            backdrop-filter: blur(20px);
+            box-shadow: 
+                0 30px 80px rgba(0, 0, 0, 0.5),
+                0 0 50px rgba(0, 255, 65, 0.2);
+            transform: scale(0.8);
+            animation: modalSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        @keyframes modalSlideIn {
+            to {
+                transform: scale(1);
+            }
+        }
+
+        .close-modal {
+            float: right;
+            font-size: 32px;
+            color: #00ff41;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: -10px;
+            margin-right: -10px;
+        }
+
+        .close-modal:hover {
+            color: #ff0080;
+            transform: scale(1.2) rotate(90deg);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin: 20px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            height: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff41, #00d4ff);
+            width: 0%;
+            transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.3), 
+                transparent);
+            animation: progressShimmer 2s linear infinite;
+        }
+
+        @keyframes progressShimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 3rem;
+            }
+            
+            .tutorial-grid,
+            .tools-grid,
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-menu {
+                right: 15px;
+            }
+            
+            .fab-container {
+                bottom: 20px;
+                left: 20px;
+            }
+            
+            .scanner-interface {
+                padding: 2rem;
+            }
+            
+            .scan-options {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(26, 26, 26, 0.8);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(45deg, #00ff41, #00d4ff);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(45deg, #00d4ff, #00ff41);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #00ff41;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Glitch Effect */
+        .glitch {
+            animation: glitch 2s linear infinite;
+        }
+
+        @keyframes glitch {
+            2%, 64% { transform: translate(2px, 0) skew(0deg); }
+            4%, 60% { transform: translate(-2px, 0) skew(0deg); }
+            62% { transform: translate(0, 0) skew(5deg); }
+        }
+
+        /* Section Titles */
+        .section-title {
+            font-size: 3rem;
+            color: #00ff41;
+            margin-bottom: 2rem;
+            text-align: center;
+            text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, #00ff41, #00d4ff);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Matrix Rain Background -->
+    <div class="matrix-bg"></div>
+    <div class="matrix-rain" id="matrixRain"></div>
+
+    <!-- Navigation -->
+    <div class="nav-menu">
+        <div class="nav-dot active" data-section="0"></div>
+        <div class="nav-dot" data-section="1"></div>
+        <div class="nav-dot" data-section="2"></div>
+        <div class="nav-dot" data-section="3"></div>
+        <div class="nav-dot" data-section="4"></div>
+        <div class="nav-dot" data-section="5"></div>
+    </div>
+
+    <!-- Floating Action Buttons -->
+    <div class="fab-container">
+        <button class="fab" id="helpBtn" title="Help">❓</button>
+        <button class="fab" id="settingsBtn" title="Settings">⚙️</button>
+        <button class="fab" id="exportBtn" title="Export">💾</button>
+    </div>
+
+    <div class="scroll-container">
+        <!-- Hero Section -->
+        <section class="section hero active" id="section0">
+            <h1 class="hero-title">OSINT STRIKER</h1>
+            <p class="hero-subtitle">Ultimate Intelligence Gathering Platform</p>
+            <div style="margin-top: 2rem;">
+                <button class="scan-btn" id="heroStartBtn" style="width: auto; padding: 15px 30px;">START RECONNAISSANCE</button>
+            </div>
+        </section>
+
+        <!-- Tutorial Section -->
+        <section class="section tutorial" id="section1">
+            <h2 class="section-title">🎓 TUTORIALS & GUIDES</h2>
+            
+            <div class="tutorial-grid">
+                <div class="tutorial-card" data-tutorial="basic">
+                    <span class="tutorial-icon">🔍</span>
+                    <h3 class="tutorial-title">Basic OSINT</h3>
+                    <p>Learn the fundamentals of Open Source Intelligence gathering, passive reconnaissance, and information validation techniques.</p>
+                </div>
+                
+                <div class="tutorial-card" data-tutorial="advanced">
+                    <span class="tutorial-icon">🕷️</span>
+                    <h3 class="tutorial-title">Advanced Reconnaissance</h3>
+                    <p>Master complex footprinting, social engineering defense, and advanced search operators for deep intelligence gathering.</p>
+                </div>
+                
+                <div class="tutorial-card" data-tutorial="automation">
+                    <span class="tutorial-icon">🤖</span>
+                    <h3 class="tutorial-title">Automation & APIs</h3>
+                    <p>Automate your intelligence workflow using APIs, scripts, and custom tools for efficient large-scale reconnaissance.</p>
+                </div>
+                
+                <div class="tutorial-card" data-tutorial="legal">
+                    <span class="tutorial-icon">⚖️</span>
+                    <h3 class="tutorial-title">Legal & Ethical OSINT</h3>
+                    <p>Understand the legal boundaries, ethical considerations, and best practices for responsible intelligence gathering.</p>
+                </div>
+                
+                <div class="tutorial-card" data-tutorial="darkweb">
+                    <span class="tutorial-icon">🌐</span>
+                    <h3 class="tutorial-title">Dark Web Research</h3>
+                    <p>Safely navigate and gather intelligence from hidden services, forums, and encrypted communications.</p>
+                </div>
+                
+                <div class="tutorial-card" data-tutorial="reporting">
+                    <span class="tutorial-icon">📊</span>
+                    <h3 class="tutorial-title">Intelligence Reporting</h3>
+                    <p>Create professional intelligence reports, visualizations, and actionable insights from raw data.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- OSINT Tools Section -->
+        <section class="section osint-tools" id="section2">
+            <h2 class="section-title">🛠️ INTELLIGENCE ARSENAL</h2>
+            
+            <div class="tools-container">
+                <div class="tool-category">
+                    <h3 class="category-title">🌐 Domain & Network Intelligence</h3>
+                    <div class="tools-grid">
+                        <div class="tool-item" data-tool="whois">
+                            <h4>WHOIS Lookup</h4>
+                            <p>Domain registration details, ownership info, DNS records</p>
+                        </div>
+                        <div class="tool-item" data-tool="subdomain">
+                            <h4>Subdomain Discovery</h4>
+                            <p>Find hidden subdomains, services, and attack vectors</p>
+                        </div>
+                        <div class="tool-item" data-tool="ssl">
+                            <h4>SSL Certificate Analysis</h4>
+                            <p>Certificate transparency, SANs, certificate chains</p>
+                        </div>
+                        <div class="tool-item" data-tool="ports">
+                            <h4>Port Scanning</h4>
+                            <p>Discover open ports, services, and potential vulnerabilities</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-category">
+                    <h3 class="category-title">👤 Personal Intelligence</h3>
+                    <div class="tools-grid">
+                        <div class="tool-item" data-tool="email">
+                            <h4>Email Intelligence</h4>
+                            <p>Email validation, breach data, associated accounts</p>
+                        </div>
+                        <div class="tool-item" data-tool="phone">
+                            <h4>Phone Number Analysis</h4>
+                            <p>Carrier info, location data, social media links</p>
+                        </div>
+                        <div class="tool-item" data-tool="social">
+                            <h4>Social Media OSINT</h4>
+                            <p>Profile discovery, relationship mapping, content analysis</p>
+                        </div>
+                        <div class="tool-item" data-tool="username">
+                            <h4>Username Enumeration</h4>
+                            <p>Find accounts across platforms, naming patterns</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-category">
+                    <h3 class="category-title">🏢 Business Intelligence</h3>
+                    <div class="tools-grid">
+                        <div class="tool-item" data-tool="company">
+                            <h4>Company Research</h4>
+                            <p>Corporate structure, employees, financial data</p>
+                        </div>
+                        <div class="tool-item" data-tool="linkedin">
+                            <h4>LinkedIn Intelligence</h4>
+                            <p>Employee enumeration, org charts, connections</p>
+                        </div>
+                        <div class="tool-item" data-tool="patents">
+                            <h4>Patent & IP Research</h4>
+                            <p>Intellectual property, innovations, legal documents</p>
+                        </div>
+                        <div class="tool-item" data-tool="financial">
+                            <h4>Financial Intelligence</h4>
+                            <p>SEC filings, financial statements, market data</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Scanner Interface -->
+        <section class="section scanner" id="section3">
+            <h2 class="section-title">🎯 INTELLIGENCE SCANNER</h2>
+            
+            <div class="scanner-interface">
+                <div class="input-section">
+                    <input type="text" class="target-input" id="targetInput" placeholder="Enter target (domain, email, phone, IP, company name...)" />
+                </div>
+                
+                <div class="scan-options">
+                    <div class="option-card selected" data-option="comprehensive">
+                        <h4>🔍 Comprehensive Scan</h4>
+                        <p>Full intelligence gathering</p>
+                    </div>
+                    <div class="option-card" data-option="passive">
+                        <h4>👻 Passive Reconnaissance</h4>
+                        <p>Stealth information gathering</p>
+                    </div>
+                    <div class="option-card" data-option="social">
+                        <h4>👥 Social Media Intel</h4>
+                        <p>Social platform analysis</p>
+                    </div>
+                    <div class="option-card" data-option="technical">
+                        <h4>⚡ Technical Analysis</h4>
+                        <p>Infrastructure deep dive</p>
+                    </div>
+                </div>
+                
+                <button class="scan-btn" id="startScanBtn">INITIATE INTELLIGENCE GATHERING</button>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="section results" id="section4">
+            <h2 class="section-title">📊 INTELLIGENCE RESULTS</h2>
+            
+            <div class="results-container">
+                <div id="scanProgress" style="display: none;">
+                    <div style="background: rgba(0,255,65,0.1); padding: 20px; border-radius: 15px; margin-bottom: 25px; border: 1px solid rgba(0,255,65,0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <span style="font-size: 1.1rem; color: #00ff41;">Intelligence Gathering in Progress...</span>
+                            <div class="loading"></div>
+                        </div>
+                        <div id="progressText" style="margin-bottom: 10px; color: #00d4ff;">Initializing scan...</div>
+                        <div class="progress-container">
+                            <div class="progress-bar" id="progressBar"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="results-grid" id="resultsGrid">
+                    <div class="result-card">
+                        <div class="result-type">🎯 Target Intelligence</div>
+                        <div class="result-data">Initiate a scan to begin intelligence gathering...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Terminal Section -->
+        <section class="section terminal" id="section5">
+            <h2 class="section-title">💻 COMMAND CENTER</h2>
+            
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <div class="terminal-button btn-close"></div>
+                    <div class="terminal-button btn-minimize"></div>
+                    <div class="terminal-button btn-maximize"></div>
+                    <span style="margin-left: 15px; color: #ccc; font-size: 14px; font-weight: bold;">OSINT STRIKER Terminal v2.0</span>
+                </div>
+                <div class="terminal-body" id="terminalBody">
+                    <div class="terminal-line prompt">osint-striker --version</div>
+                    <div class="terminal-line output">OSINT STRIKER v2.0 - Ultimate Intelligence Platform</div>
+                    <div class="terminal-line prompt">help</div>
+                    <div class="terminal-line output">Available commands:</div>
+                    <div class="terminal-line output">  scan [target] - Start intelligence gathering</div>
+                    <div class="terminal-line output">  export [format] - Export results (json/xml/csv)</div>
+                    <div class="terminal-line output">  tutorial [topic] - Launch interactive tutorial</div>
+                    <div class="terminal-line output">  tools - List available OSINT tools</div>
+                    <div class="terminal-line output">  clear - Clear terminal output</div>
+                    <div class="terminal-line prompt">status</div>
+                    <div class="terminal-line output">System Status: OPERATIONAL</div>
+                    <div class="terminal-line output">Intelligence Sources: ACTIVE</div>
+                    <div class="terminal-line output">Security Level: MAXIMUM</div>
+                    <div class="terminal-line prompt" id="currentPrompt">
+                        <span style="color: #00ff41;">$</span> 
+                        <span id="terminalCursor" style="animation: blink 1s infinite;">_</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="helpModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeHelp">&times;</span>
+            <h2 style="color: #00ff41; margin-bottom: 1rem;">🔍 HELP & DOCUMENTATION</h2>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <h3 style="color: #00d4ff;">Getting Started</h3>
+                <p>1. Enter your target in the scanner section</p>
+                <p>2. Select scan type (Comprehensive, Passive, Social, Technical)</p>
+                <p>3. Click "INITIATE INTELLIGENCE GATHERING"</p>
+                <p>4. Review results and export data</p>
+                
+                <h3 style="color: #00d4ff; margin-top: 1rem;">Target Types</h3>
+                <p>• <strong>Domains:</strong> example.com, subdomain.target.com</p>
+                <p>• <strong>Email:</strong> target@company.com</p>
+                <p>• <strong>Phone:</strong> +1-555-123-4567</p>
+                <p>• <strong>IP Address:</strong> 192.168.1.1</p>
+                <p>• <strong>Company:</strong> "Company Name Inc"</p>
+                <p>• <strong>Username:</strong> @username</p>
+                
+                <h3 style="color: #00d4ff; margin-top: 1rem;">Keyboard Shortcuts</h3>
+                <p>• <kbd>Ctrl+Enter</kbd> - Start scan</p>
+                <p>• <kbd>Ctrl+E</kbd> - Export results</p>
+                <p>• <kbd>Ctrl+H</kbd> - Toggle help</p>
+                <p>• <kbd>Esc</kbd> - Close modals</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeSettings">&times;</span>
+            <h2 style="color: #00ff41; margin-bottom: 1rem;">⚙️ SETTINGS & CONFIGURATION</h2>
+            <div>
+                <h3 style="color: #00d4ff;">Scan Configuration</h3>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="deepScan" checked> Deep Reconnaissance
+                </label>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="socialMedia" checked> Social Media Analysis
+                </label>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="darkWeb"> Dark Web Search (Use with caution)
+                </label>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="realTime" checked> Real-time Updates
+                </label>
+                
+                <h3 style="color: #00d4ff; margin-top: 1rem;">Export Options</h3>
+                <select id="exportFormat" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(0,255,65,0.3); border-radius: 5px; color: white;">
+                    <option value="json">JSON (Detailed)</option>
+                    <option value="csv">CSV (Spreadsheet)</option>
+                    <option value="xml">XML (Structured)</option>
+                    <option value="pdf">PDF (Report)</option>
+                </select>
+                
+                <h3 style="color: #00d4ff; margin-top: 1rem;">Privacy & Security</h3>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="anonymousMode" checked> Anonymous Mode
+                </label>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="encryptResults" checked> Encrypt Results
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentSection = 0;
+        let scanResults = [];
+        let terminalHistory = [];
+        let isScanning = false;
+        let scanProgress = 0;
+
+        // Initialize Matrix Rain Effect
+        function createMatrixRain() {
+            const matrixRain = document.getElementById('matrixRain');
+            const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+            
+            // Clear existing drops
+            matrixRain.innerHTML = '';
+            
+            for (let i = 0; i < 60; i++) {
+                const drop = document.createElement('div');
+                drop.className = 'matrix-drop';
+                drop.textContent = chars[Math.floor(Math.random() * chars.length)];
+                drop.style.left = Math.random() * 100 + '%';
+                drop.style.animationDuration = (Math.random() * 4 + 3) + 's';
+                drop.style.animationDelay = Math.random() * 3 + 's';
+                matrixRain.appendChild(drop);
+            }
+        }
+
+        // Enhanced scroll handling with 3D effects
+        function scrollToSection(index) {
+            const sections = document.querySelectorAll('.section');
+            if (sections[index]) {
+                sections[index].scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+                updateNavigation(index);
+                apply3DEffects(index);
+            }
+        }
+
+        function apply3DEffects(activeIndex) {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach((section, index) => {
+                section.classList.remove('active');
+                if (index === activeIndex) {
+                    section.classList.add('active');
+                }
+            });
+        }
+
+        function updateNavigation(activeIndex) {
+            const dots = document.querySelectorAll('.nav-dot');
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === activeIndex);
+            });
+            currentSection = activeIndex;
+        }
+
+        // Tutorial system
+        function startTutorial(type) {
+            const tutorials = {
+                basic: {
+                    title: "Basic OSINT Fundamentals",
+                    steps: [
+                        "Understanding public information sources",
+                        "Search engine optimization for intelligence",
+                        "Social media reconnaissance techniques",
+                        "Information validation and verification",
+                        "Documentation and reporting best practices"
+                    ]
+                },
+                advanced: {
+                    title: "Advanced Reconnaissance Techniques",
+                    steps: [
+                        "Passive DNS enumeration",
+                        "Certificate transparency analysis",
+                        "Metadata extraction and analysis",
+                        "Network infrastructure mapping",
+                        "Advanced Google dorking techniques"
+                    ]
+                },
+                automation: {
+                    title: "Intelligence Automation",
+                    steps: [
+                        "API integration and automation",
+                        "Custom script development",
+                        "Workflow optimization",
+                        "Data correlation techniques",
+                        "Automated report generation"
+                    ]
+                },
+                legal: {
+                    title: "Legal & Ethical OSINT",
+                    steps: [
+                        "Legal boundaries and regulations",
+                        "Ethical intelligence gathering",
+                        "Privacy considerations",
+                        "Documentation for legal proceedings",
+                        "Professional standards and certifications"
+                    ]
+                },
+                darkweb: {
+                    title: "Dark Web Intelligence",
+                    steps: [
+                        "Secure access and anonymization",
+                        "Hidden service discovery",
+                        "Forum and marketplace analysis",
+                        "Threat intelligence gathering",
+                        "Attribution and verification challenges"
+                    ]
+                },
+                reporting: {
+                    title: "Intelligence Reporting",
+                    steps: [
+                        "Report structure and formatting",
+                        "Data visualization techniques",
+                        "Executive summary creation",
+                        "Confidence levels and attribution",
+                        "Actionable intelligence recommendations"
+                    ]
+                }
+            };
+
+            const tutorial = tutorials[type];
+            if (tutorial) {
+                addTerminalOutput(`🎓 Starting tutorial: ${tutorial.title}`, 'output');
+                tutorial.steps.forEach((step, index) => {
+                    setTimeout(() => {
+                        addTerminalOutput(`📖 Step ${index + 1}: ${step}`, 'output');
+                    }, (index + 1) * 800);
+                });
+                setTimeout(() => {
+                    addTerminalOutput('✅ Tutorial completed! Type "help" for more commands.', 'output');
+                }, tutorial.steps.length * 800 + 1000);
+            }
+        }
+
+        // OSINT Tools with enhanced data generation
+        function runTool(toolType) {
+            const target = document.getElementById('targetInput').value || 'example.com';
+            
+            addTerminalOutput(`🛠️ Running ${toolType} analysis on: ${target}`, 'output');
+            
+            setTimeout(() => {
+                const results = generateToolResults(toolType, target);
+                displayToolResults(toolType, results);
+                addTerminalOutput(`✅ ${toolType} analysis completed`, 'output');
+            }, 1500);
+        }
+
+        function generateToolResults(toolType, target) {
+            const generators = {
+                whois: () => generateWhoisData(target),
+                subdomain: () => generateSubdomainData(target),
+                ssl: () => generateSSLData(target),
+                ports: () => generatePortData(target),
+                email: () => generateEmailData(target),
+                phone: () => generatePhoneData(target),
+                social: () => generateSocialData(target),
+                username: () => generateUsernameData(target),
+                company: () => generateCompanyData(target),
+                linkedin: () => generateLinkedInData(target),
+                patents: () => generatePatentData(target),
+                financial: () => generateFinancialData(target)
+            };
+
+            return generators[toolType] ? generators[toolType]() : { error: 'Tool not found' };
+        }
+
+        // Enhanced data generators
+        function generateWhoisData(target) {
+            return {
+                domain: target,
+                registrar: "Example Registrar Inc.",
+                created: "2020-01-15",
+                expires: "2025-01-15",
+                updated: "2023-12-01",
+                nameservers: ["ns1.example.com", "ns2.example.com"],
+                contacts: {
+                    admin: "admin@example.com",
+                    tech: "tech@example.com",
+                    registrant: "contact@example.com"
+                },
+                dnssec: "unsigned",
+                status: ["clientTransferProhibited", "clientDeleteProhibited"]
+            };
+        }
+
+        function generateSubdomainData(target) {
+            const subdomains = [
+                'www', 'mail', 'ftp', 'admin', 'api', 'dev', 'staging', 
+                'test', 'cdn', 'assets', 'blog', 'shop', 'support',
+                'portal', 'dashboard', 'secure', 'vpn', 'remote'
+            ];
+            const found = [];
+            const numFound = Math.floor(Math.random() * 12) + 5;
+            
+            for (let i = 0; i < numFound; i++) {
+                const sub = subdomains[Math.floor(Math.random() * subdomains.length)];
+                if (!found.includes(`${sub}.${target}`)) {
+                    found.push(`${sub}.${target}`);
+                }
+            }
+            return found;
+        }
+
+        function generateSSLData(target) {
+            return {
+                issuer: "Let's Encrypt Authority X3",
+                subject: target,
+                sans: [`*.${target}`, `www.${target}`, `mail.${target}`, `api.${target}`],
+                validFrom: "2024-01-01",
+                validTo: "2024-12-31",
+                serialNumber: "03:B2:F6:BC:CF:18:E0:1C",
+                fingerprint: "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD",
+                keySize: "2048 bits",
+                signatureAlgorithm: "SHA256withRSA"
+            };
+        }
+
+        function generatePortData(target) {
+            const commonPorts = [
+                { port: 80, service: 'HTTP', version: 'Apache 2.4.41' },
+                { port: 443, service: 'HTTPS', version: 'nginx 1.18.0' },
+                { port: 22, service: 'SSH', version: 'OpenSSH 8.2' },
+                { port: 21, service: 'FTP', version: 'vsftpd 3.0.3' },
+                { port: 25, service: 'SMTP', version: 'Postfix' },
+                { port: 53, service: 'DNS', version: 'BIND 9.16.1' },
+                { port: 3306, service: 'MySQL', version: '8.0.25' },
+                { port: 5432, service: 'PostgreSQL', version: '13.3' },
+                { port: 6379, service: 'Redis', version: '6.2.5' },
+                { port: 27017, service: 'MongoDB', version: '4.4.6' }
+            ];
+            
+            return commonPorts.slice(0, Math.floor(Math.random() * 7) + 4).map(item => ({
+                ...item,
+                status: Math.random() > 0.25 ? 'open' : 'filtered'
+            }));
+        }
+
+        function generateEmailData(target) {
+            return {
+                email: target,
+                validity: "valid",
+                breaches: [
+                    { name: "DataBreach2023", date: "2023-05-15", records: "2.1M" },
+                    { name: "MegaLeak2022", date: "2022-11-03", records: "890K" }
+                ],
+                socialAccounts: [
+                    { platform: "Twitter", username: target.split('@')[0] },
+                    { platform: "LinkedIn", profile: "confirmed" },
+                    { platform: "GitHub", username: target.split('@')[0] }
+                ],
+                domains: [`${target.split('@')[1]}`, "backup-domain.com"],
+                reputation: "clean",
+                disposable: false
+            };
+        }
+
+        function generatePhoneData(target) {
+            return {
+                number: target,
+                carrier: "Verizon Wireless",
+                location: {
+                    country: "United States",
+                    state: "New York",
+                    city: "New York"
+                },
+                type: "Mobile",
+                socialMedia: [
+                    { platform: "WhatsApp", status: "registered" },
+                    { platform: "Telegram", status: "possible" }
+                ],
+                associatedEmails: ["user@example.com", "contact@business.com"],
+                reputation: "clean",
+                spam_reports: 0
+            };
+        }
+
+        function generateSocialData(target) {
+            const platforms = [
+                { name: 'Twitter', icon: '🐦' },
+                { name: 'LinkedIn', icon: '💼' },
+                { name: 'Facebook', icon: '📘' },
+                { name: 'Instagram', icon: '📷' },
+                { name: 'GitHub', icon: '👨‍💻' },
+                { name: 'Reddit', icon: '🤖' },
+                { name: 'YouTube', icon: '🎥' },
+                { name: 'TikTok', icon: '🎵' }
+            ];
+            
+            return platforms.map(platform => ({
+                platform: platform.name,
+                icon: platform.icon,
+                username: target.replace(/[@.]/, ''),
+                followers: Math.floor(Math.random() * 50000),
+                posts: Math.floor(Math.random() * 2000),
+                lastActive: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                verified: Math.random() > 0.8,
+                found: Math.random() > 0.3
+            })).filter(p => p.found);
+        }
+
+        function generateUsernameData(target) {
+            const platforms = [
+                'GitHub', 'Twitter', 'Instagram', 'Reddit', 'YouTube', 
+                'TikTok', 'Pinterest', 'Snapchat', 'Twitch', 'Discord'
+            ];
+            return platforms.map(platform => ({
+                platform,
+                found: Math.random() > 0.4,
+                url: `https://${platform.toLowerCase()}.com/${target}`,
+                lastSeen: Math.random() > 0.5 ? 
+                    new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
+                    "Unknown",
+                profile_pic: Math.random() > 0.6,
+                activity_level: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)]
+            }));
+        }
+
+        function generateCompanyData(target) {
+            return {
+                name: target,
+                industry: ["Technology", "Finance", "Healthcare", "Retail", "Manufacturing"][Math.floor(Math.random() * 5)],
+                employees: `${Math.floor(Math.random() * 5000) + 100}-${Math.floor(Math.random() * 5000) + 2000}`,
+                founded: Math.floor(Math.random() * 30) + 1990,
+                headquarters: ["San Francisco, CA", "New York, NY", "Austin, TX", "Seattle, WA"][Math.floor(Math.random() * 4)],
+                revenue: `${Math.floor(Math.random() * 500) + 50}M-${Math.floor(Math.random() * 500) + 300}M`,
+                competitors: ["CompetitorA", "CompetitorB", "CompetitorC"],
+                website: `https://${target.toLowerCase().replace(/\s+/g, '')}.com`,
+                phone: `+1-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`
+            };
+        }
+
+        function generateLinkedInData(target) {
+            return {
+                company: target,
+                employees: Math.floor(Math.random() * 5000) + 100,
+                departments: [
+                    { name: "Engineering", count: Math.floor(Math.random() * 200) + 50 },
+                    { name: "Sales", count: Math.floor(Math.random() * 100) + 20 },
+                    { name: "Marketing", count: Math.floor(Math.random() * 50) + 10 },
+                    { name: "HR", count: Math.floor(Math.random() * 30) + 5 }
+                ],
+                executives: [
+                    { name: "John Doe", title: "CEO", tenure: "5 years" },
+                    { name: "Jane Smith", title: "CTO", tenure: "3 years" },
+                    { name: "Bob Johnson", title: "CFO", tenure: "2 years" }
+                ],
+                recentHires: Math.floor(Math.random() * 50) + 10,
+                growth_rate: `${Math.floor(Math.random() * 20) + 5}% YoY`
+            };
+        }
+
+        function generatePatentData(target) {
+            return {
+                company: target,
+                total_patents: Math.floor(Math.random() * 200) + 50,
+                recent_patents: [
+                    { id: "US11234567", title: "AI-Based Data Processing System", date: "2024-01-15" },
+                    { id: "US11234568", title: "Advanced Security Protocol", date: "2023-11-20" },
+                    { id: "US11234569", title: "Machine Learning Architecture", date: "2023-09-10" }
+                ],
+                categories: [
+                    { category: "Artificial Intelligence", count: Math.floor(Math.random() * 50) + 10 },
+                    { category: "Data Processing", count: Math.floor(Math.random() * 30) + 5 },
+                    { category: "Security", count: Math.floor(Math.random() * 25) + 5 }
+                ],
+                pending: Math.floor(Math.random() * 20) + 5
+            };
+        }
+
+        function generateFinancialData(target) {
+            return {
+                company: target,
+                marketCap: `${(Math.random() * 10 + 0.5).toFixed(1)}B`,
+                revenue: `${(Math.random() * 1000 + 100).toFixed(0)}M`,
+                employees: Math.floor(Math.random() * 5000) + 500,
+                stockPrice: `${(Math.random() * 200 + 10).toFixed(2)}`,
+                filings: [
+                    { type: "10-K", date: "2024-03-15", description: "Annual Report" },
+                    { type: "10-Q", date: "2024-01-30", description: "Quarterly Report" },
+                    { type: "8-K", date: "2024-01-15", description: "Current Report" }
+                ],
+                financial_health: ["Excellent", "Good", "Fair"][Math.floor(Math.random() * 3)],
+                debt_ratio: `${(Math.random() * 0.5 + 0.1).toFixed(2)}`
+            };
+        }
+
+        // Intelligence Scanner - FIXED FUNCTION
+        function startIntelligenceScan() {
+            const target = document.getElementById('targetInput').value.trim();
+            if (!target) {
+                addTerminalOutput('❌ Error: No target specified', 'error');
+                return;
+            }
+
+            if (isScanning) {
+                addTerminalOutput('⚠️ Scan already in progress...', 'warning');
+                return;
+            }
+
+            isScanning = true;
+            scanResults = [];
+            scanProgress = 0;
+            
+            const selectedOption = document.querySelector('.option-card.selected').dataset.option;
+            
+            addTerminalOutput(`🚀 Initiating ${selectedOption} scan on: ${target}`, 'output');
+            addTerminalOutput('🔍 Gathering intelligence from multiple sources...', 'output');
+            
+            document.getElementById('scanProgress').style.display = 'block';
+            updateProgressText('Initializing scan systems...');
+            scrollToSection(4);
+            
+            simulateIntelligenceScan(target, selectedOption);
+        }
+
+        function simulateIntelligenceScan(target, scanType) {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            const scanSteps = [
+                { step: 'DNS enumeration and analysis', progress: 15, delay: 1000 },
+                { step: 'Subdomain discovery and validation', progress: 25, delay: 1200 },
+                { step: 'SSL certificate transparency logs', progress: 40, delay: 1000 },
+                { step: 'Social media reconnaissance', progress: 55, delay: 1500 },
+                { step: 'Email and contact intelligence', progress: 70, delay: 1000 },
+                { step: 'Network infrastructure analysis', progress: 85, delay: 1200 },
+                { step: 'Compiling comprehensive report', progress: 100, delay: 800 }
+            ];
+
+            let currentStep = 0;
+
+            function executeStep() {
+                if (currentStep >= scanSteps.length) {
+                    completeScan(target);
+                    return;
+                }
+
+                const step = scanSteps[currentStep];
+                progressBar.style.width = step.progress + '%';
+                updateProgressText(`${step.step}... ${step.progress}%`);
+                addTerminalOutput(`📊 ${step.step}... ${step.progress}%`, 'output');
+                
+                // Generate results for this step
+                generateScanResults(target, step.step, currentStep);
+                
+                currentStep++;
+                setTimeout(executeStep, step.delay);
+            }
+
+            executeStep();
+        }
+
+        function updateProgressText(text) {
+            const progressTextEl = document.getElementById('progressText');
+            if (progressTextEl) {
+                progressTextEl.textContent = text;
+            }
+        }
+
+        function generateScanResults(target, step, stepIndex) {
+            const resultsGrid = document.getElementById('resultsGrid');
+            
+            // Clear initial placeholder on first result
+            if (stepIndex === 0) {
+                resultsGrid.innerHTML = '';
+            }
+            
+            let resultData = null;
+            
+            switch (true) {
+                case step.includes('DNS'):
+                    resultData = {
+                        type: '🌐 DNS Intelligence',
+                        data: `A: 192.168.1.${Math.floor(Math.random() * 255) + 1}
+AAAA: 2001:db8::${Math.floor(Math.random() * 9999)}
+MX: mail.${target} (Priority: 10)
+NS: ns1.${target}, ns2.${target}
+TXT: "v=spf1 include:_spf.google.com ~all"`
+                    };
+                    break;
+                    
+                case step.includes('subdomain'):
+                    const subdomains = generateSubdomainData(target);
+                    resultData = {
+                        type: '🔍 Subdomain Discovery',
+                        data: `Found ${subdomains.length} subdomains:
+${subdomains.slice(0, 8).join('\n')}
+${subdomains.length > 8 ? `... and ${subdomains.length - 8} more` : ''}`
+                    };
+                    break;
+                    
+                case step.includes('SSL'):
+                    const sslData = generateSSLData(target);
+                    resultData = {
+                        type: '🔒 SSL Certificate Analysis',
+                        data: `Issuer: ${sslData.issuer}
+Subject: ${sslData.subject}
+SANs: ${sslData.sans.join(', ')}
+Valid: ${sslData.validFrom} - ${sslData.validTo}
+Key Size: ${sslData.keySize}
+Signature: ${sslData.signatureAlgorithm}`
+                    };
+                    break;
+                    
+                case step.includes('Social'):
+                    const socialData = generateSocialData(target);
+                    resultData = {
+                        type: '👥 Social Media Intelligence',
+                        data: socialData.map(s => 
+                            `${s.icon} ${s.platform}: ${s.followers.toLocaleString()} followers
+   Last Active: ${s.lastActive}${s.verified ? ' ✓ Verified' : ''}`
+                        ).join('\n')
+                    };
+                    break;
+                    
+                case step.includes('Email'):
+                    resultData = {
+                        type: '📧 Email Intelligence',
+                        data: `Email Validation: Valid
+Breach Records: 2 breaches found
+Associated Accounts: 3 platforms
+Reputation: Clean
+Disposable: No
+Last Breach: DataBreach2023 (2.1M records)`
+                    };
+                    break;
+                    
+                case step.includes('Network'):
+                    const portData = generatePortData(target);
+                    resultData = {
+                        type: '🌐 Network Infrastructure',
+                        data: portData.map(p => 
+                            `Port ${p.port}: ${p.service} (${p.status})
+   Version: ${p.version || 'Unknown'}`
+                        ).join('\n')
+                    };
+                    break;
+                    
+                case step.includes('report'):
+                    resultData = {
+                        type: '📊 Scan Summary',
+                        data: `Total Intelligence Categories: ${scanResults.length + 1}
+Scan Type: ${document.querySelector('.option-card.selected').dataset.option}
+Target: ${target}
+Completion Time: ${new Date().toLocaleTimeString()}
+Risk Level: ${['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)]}
+Confidence: ${Math.floor(Math.random() * 30) + 70}%`
+                    };
+                    break;
+            }
+            
+            if (resultData) {
+                const resultCard = document.createElement('div');
+                resultCard.className = 'result-card';
+                resultCard.innerHTML = `
+                    <div class="result-type">${resultData.type}</div>
+                    <div class="result-data">${resultData.data}</div>
+                `;
+                resultsGrid.appendChild(resultCard);
+                scanResults.push(resultData);
+                
+                // Animate the new card
+                setTimeout(() => {
+                    resultCard.style.opacity = '0';
+                    resultCard.style.transform = 'translateY(20px)';
+                    resultCard.style.transition = 'all 0.5s ease';
+                    setTimeout(() => {
+                        resultCard.style.opacity = '1';
+                        resultCard.style.transform = 'translateY(0)';
+                    }, 50);
+                }, 100);
+            }
+        }
+
+        function completeScan(target) {
+            isScanning = false;
+            document.getElementById('scanProgress').style.display = 'none';
+            addTerminalOutput('✅ Intelligence gathering completed successfully!', 'output');
+            addTerminalOutput(`📈 Generated ${scanResults.length} intelligence reports`, 'output');
+            addTerminalOutput('💾 Type "export" to save results or use the export button', 'output');
+            
+            // Add a final summary card
+            setTimeout(() => {
+                const resultsGrid = document.getElementById('resultsGrid');
+                const summaryCard = document.createElement('div');
+                summaryCard.className = 'result-card';
+                summaryCard.style.border = '2px solid #00ff41';
+                summaryCard.innerHTML = `
+                    <div class="result-type">🎯 OSINT STRIKER ANALYSIS COMPLETE</div>
+                    <div class="result-data">Target: ${target}
+Scan Duration: ${Math.floor(Math.random() * 30) + 15} seconds
+Intelligence Categories: ${scanResults.length}
+Data Points Collected: ${Math.floor(Math.random() * 500) + 100}
+Threat Level: ${['Minimal', 'Low', 'Medium'][Math.floor(Math.random() * 3)]}
+Recommendation: Review all findings and cross-reference data</div>
+                `;
+                resultsGrid.appendChild(summaryCard);
+            }, 1000);
+        }
+
+        // Event Listeners Setup
+        function setupEventListeners() {
+            // Navigation dots
+            document.querySelectorAll('.nav-dot').forEach((dot, index) => {
+                dot.addEventListener('click', () => scrollToSection(index));
+            });
+
+            // Tutorial cards
+            document.querySelectorAll('.tutorial-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const tutorialType = card.dataset.tutorial;
+                    startTutorial(tutorialType);
+                    scrollToSection(5); // Go to terminal
+                });
+            });
+
+            // Tool items
+            document.querySelectorAll('.tool-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const toolType = item.dataset.tool;
+                    runTool(toolType);
+                    scrollToSection(5); // Go to terminal
+                });
+            });
+
+            // Scan option selection
+            document.querySelectorAll('.option-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+
+            // Main scan button
+            const startScanBtn = document.getElementById('startScanBtn');
+            if (startScanBtn) {
+                startScanBtn.addEventListener('click', startIntelligenceScan);
+            }
+
+            // Hero start button
+            const heroStartBtn = document.getElementById('heroStartBtn');
+            if (heroStartBtn) {
+                heroStartBtn.addEventListener('click', () => scrollToSection(3));
+            }
+
+            // Target input enter key
+            const targetInput = document.getElementById('targetInput');
+            if (targetInput) {
+                targetInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        startIntelligenceScan();
+                    }
+                });
+            }
+
+            // Floating Action Buttons
+            const helpBtn = document.getElementById('helpBtn');
+            const settingsBtn = document.getElementById('settingsBtn');
+            const exportBtn = document.getElementById('exportBtn');
+
+            if (helpBtn) {
+                helpBtn.addEventListener('click', () => openModal('help'));
+            }
+            if (settingsBtn) {
+                settingsBtn.addEventListener('click', () => openModal('settings'));
+            }
+            if (exportBtn) {
+                exportBtn.addEventListener('click', exportAllData);
+            }
+
+            // Modal close buttons
+            const closeHelp = document.getElementById('closeHelp');
+            const closeSettings = document.getElementById('closeSettings');
+
+            if (closeHelp) {
+                closeHelp.addEventListener('click', () => closeModal('help'));
+            }
+            if (closeSettings) {
+                closeSettings.addEventListener('click', () => closeModal('settings'));
+            }
+
+            // Terminal button effects
+            document.querySelectorAll('.terminal-button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (btn.classList.contains('btn-close')) {
+                        addTerminalOutput('Terminal connection closed', 'warning');
+                    } else if (btn.classList.contains('btn-minimize')) {
+                        addTerminalOutput('Terminal minimized', 'output');
+                    } else if (btn.classList.contains('btn-maximize')) {
+                        addTerminalOutput('Terminal maximized', 'output');
+                    }
+                });
+            });
+        }
+
+        // Terminal functionality
+        function addTerminalOutput(text, type = 'output') {
+            const terminalBody = document.getElementById('terminalBody');
+            const currentPrompt = document.getElementById('currentPrompt');
+            
+            if (!terminalBody || !currentPrompt) return;
+            
+            const line = document.createElement('div');
+            line.className = `terminal-line ${type}`;
+            line.textContent = text;
+            
+            terminalBody.insertBefore(line, currentPrompt);
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+            
+            // Animate the line
+            setTimeout(() => line.style.opacity = '1', 50);
+        }
+
+        // Modal functionality - FIXED
+        function openModal(type) {
+            const modal = document.getElementById(type + 'Modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeModal(type) {
+            const modal = document.getElementById(type + 'Modal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Export functionality - ENHANCED
+        function exportAllData() {
+            if (scanResults.length === 0) {
+                addTerminalOutput('⚠️ No data to export. Run a scan first.', 'warning');
+                return;
+            }
+
+            const exportFormat = document.getElementById('exportFormat')?.value || 'json';
+            const target = document.getElementById('targetInput').value || 'unknown';
+            
+            const exportData = {
+                meta: {
+                    timestamp: new Date().toISOString(),
+                    target: target,
+                    scanType: document.querySelector('.option-card.selected')?.dataset.option || 'comprehensive',
+                    version: "OSINT STRIKER v2.0",
+                    totalResults: scanResults.length,
+                    exportFormat: exportFormat
+                },
+                settings: {
+                    deepScan: document.getElementById('deepScan')?.checked || false,
+                    socialMedia: document.getElementById('socialMedia')?.checked || false,
+                    darkWeb: document.getElementById('darkWeb')?.checked || false,
+                    anonymousMode: document.getElementById('anonymousMode')?.checked || false
+                },
+                intelligence: scanResults,
+                summary: {
+                    categories: scanResults.length,
+                    dataPoints: Math.floor(Math.random() * 500) + 100,
+                    riskLevel: ['Minimal', 'Low', 'Medium', 'High'][Math.floor(Math.random() * 4)],
+                    confidence: Math.floor(Math.random() * 30) + 70
+                }
+            };
+
+            let fileContent, fileName, mimeType;
+
+            switch (exportFormat) {
+                case 'json':
+                    fileContent = JSON.stringify(exportData, null, 2);
+                    fileName = `osint_striker_${target}_${Date.now()}.json`;
+                    mimeType = 'application/json';
+                    break;
+                case 'csv':
+                    fileContent = convertToCSV(exportData);
+                    fileName = `osint_striker_${target}_${Date.now()}.csv`;
+                    mimeType = 'text/csv';
+                    break;
+                case 'xml':
+                    fileContent = convertToXML(exportData);
+                    fileName = `osint_striker_${target}_${Date.now()}.xml`;
+                    mimeType = 'application/xml';
+                    break;
+                default:
+                    fileContent = JSON.stringify(exportData, null, 2);
+                    fileName = `osint_striker_${target}_${Date.now()}.json`;
+                    mimeType = 'application/json';
+            }
+
+            const blob = new Blob([fileContent], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            addTerminalOutput(`💾 Intelligence data exported as ${exportFormat.toUpperCase()} successfully!`, 'output');
+            addTerminalOutput(`📁 File: ${fileName}`, 'output');
+        }
+
+        function convertToCSV(data) {
+            let csv = 'Category,Type,Data,Timestamp\n';
+            data.intelligence.forEach(item => {
+                const cleanData = item.data.replace(/"/g, '""').replace(/\n/g, ' | ');
+                csv += `"${item.type}","Intelligence","${cleanData}","${data.meta.timestamp}"\n`;
+            });
+            return csv;
+        }
+
+        function convertToXML(data) {
+            let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<osint_report>\n';
+            xml += `  <meta>\n    <timestamp>${data.meta.timestamp}</timestamp>\n    <target>${data.meta.target}</target>\n  </meta>\n`;
+            xml += '  <intelligence>\n';
+            data.intelligence.forEach(item => {
+                xml += `    <item>\n      <type>${item.type}</type>\n      <data><![CDATA[${item.data}]]></data>\n    </item>\n`;
+            });
+            xml += '  </intelligence>\n</osint_report>';
+            return xml;
+        }
+
+        function displayToolResults(toolType, results) {
+            const resultsGrid = document.getElementById('resultsGrid');
+            
+            const resultCard = document.createElement('div');
+            resultCard.className = 'result-card';
+            resultCard.innerHTML = `
+                <div class="result-type">🛠️ ${toolType.toUpperCase()} Analysis</div>
+                <div class="result-data"><pre>${JSON.stringify(results, null, 2)}</pre></div>
+            `;
+            resultsGrid.appendChild(resultCard);
+            
+            scrollToSection(4);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key.toLowerCase()) {
+                    case 'enter':
+                        e.preventDefault();
+                        startIntelligenceScan();
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        exportAllData();
+                        break;
+                    case 'h':
+                        e.preventDefault();
+                        openModal('help');
+                        break;
+                }
+            }
+            
+            if (e.key === 'Escape') {
+                closeModal('help');
+                closeModal('settings');
+            }
+        });
+
+        // Enhanced scroll detection
+        let isScrolling = false;
+        
+        function updateScrollPosition() {
+            const sections = document.querySelectorAll('.section');
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const windowHeight = window.innerHeight;
+            
+            sections.forEach((section, index) => {
+                const rect = section.getBoundingClientRect();
+                const isInView = rect.top <= windowHeight / 2 && rect.bottom >= windowHeight / 2;
+                
+                if (isInView && currentSection !== index) {
+                    updateNavigation(index);
+                    apply3DEffects(index);
+                }
+            });
+            
+            isScrolling = false;
+        }
+
+        window.addEventListener('scroll', function() {
+            if (!isScrolling) {
+                requestAnimationFrame(updateScrollPosition);
+                isScrolling = true;
+            }
+        });
+
+        window.addEventListener('click', function(e) {
+            const helpModal = document.getElementById('helpModal');
+            const settingsModal = document.getElementById('settingsModal');
+            
+            if (e.target === helpModal) {
+                closeModal('help');
+            }
+            if (e.target === settingsModal) {
+                closeModal('settings');
+            }
+        });
+
+        function animateTerminalCursor() {
+            const cursor = document.getElementById('terminalCursor');
+            if (cursor) {
+                setInterval(() => {
+                    cursor.style.opacity = cursor.style.opacity === '0' ? '1' : '0';
+                }, 500);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 OSINT STRIKER v2.0 Initializing...');
+            
+            createMatrixRain();
+            
+            setupEventListeners();
+            
+            animateTerminalCursor();
+            
+            setTimeout(() => addTerminalOutput('🚀 OSINT STRIKER v2.0 initialized successfully', 'output'), 1000);
+            setTimeout(() => addTerminalOutput('🔒 All intelligence modules loaded and secured', 'output'), 1500);
+            setTimeout(() => addTerminalOutput('🌐 Connection to intelligence sources established', 'output'), 2000);
+            setTimeout(() => addTerminalOutput('⚡ System ready for reconnaissance operations', 'output'), 2500);
+            setTimeout(() => addTerminalOutput('💡 Type "help" for available commands or explore the interface', 'output'), 3000);
+            
+            setInterval(createMatrixRain, 30000);
+            
+            console.log('✅ OSINT STRIKER v2.0 Ready!');
+        });
+
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes blink {
+                0%, 50% { opacity: 1; }
+                51%, 100% { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+
+    </script>
+</body>
+</html>
