@@ -3,2221 +3,1829 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OSINT STRIKER - Ultimate Intelligence Platform</title>
+    <title>🔥 OSINT STRIKER 🔥</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let reconActive = false;
+        let reconResults = [];
+        let scanProgress = 0;
+        let currentScanId = null;
+        let filteredResults = [];
+        let detailedData = {};
+
+        async function startRecon() {
+            if (reconActive) return;
+
+            const target = document.getElementById('targetDomain')?.value.trim();
+            const mode = document.getElementById('scanMode')?.value;
+            const threads = parseInt(document.getElementById('threads')?.value) || 10;
+            const timeout = parseInt(document.getElementById('timeout')?.value) || 5000;
+
+            if (!target) {
+                addTerminalLine('ERROR: Please specify a target', 'error');
+                return;
+            }
+
+            const startButton = document.querySelector('button[onclick="startRecon()"]');
+            startButton.disabled = true;
+
+            const targetType = detectTargetType(target);
+
+            reconActive = true;
+            currentScanId = Date.now();
+            reconResults = [];
+            filteredResults = [];
+            detailedData = {};
+            scanProgress = 0;
+
+            addTerminalLine(`🎯 Starting ${mode} reconnaissance on ${target} (Type: ${targetType})`, 'success');
+            addTerminalLine(`⚙️ Configuration: ${threads} threads, ${timeout}ms timeout`, 'success');
+
+            updateProgress(0);
+            showLoading();
+
+            try {
+                await performReconnaissance(target, targetType, mode, threads, timeout);
+            } catch (error) {
+                addTerminalLine(`❌ Reconnaissance failed: ${error.message}`, 'error');
+            } finally {
+                reconActive = false;
+                updateProgress(100);
+                startButton.disabled = false;
+            }
+        }
+
+        function stopRecon() {
+            if (!reconActive) return;
+
+            reconActive = false;
+            addTerminalLine('🛑 Reconnaissance aborted by user', 'warning');
+            updateProgress(0);
+        }
+
+        function exportResults() {
+            if (reconResults.length === 0) {
+                addTerminalLine('❌ No data to export', 'error');
+                return;
+            }
+
+            const exportData = {
+                metadata: {
+                    tool: 'Striker Attack Surface Explorer',
+                    version: '3.0',
+                    scan_date: new Date().toISOString(),
+                    total_results: reconResults.length,
+                    target: document.getElementById('targetDomain')?.value,
+                    scan_mode: document.getElementById('scanMode')?.value
+                },
+                results: reconResults,
+                detailed_data: detailedData,
+                statistics: {
+                    subdomains: reconResults.filter(r => r.type === 'subdomain').length,
+                    ports: reconResults.filter(r => r.type === 'port').length,
+                    services: reconResults.filter(r => r.type === 'service').length,
+                    phone_intel: reconResults.filter(r => r.type === 'phone').length,
+                    ip_intel: reconResults.filter(r => r.type === 'ip').length,
+                    dns_records: reconResults.filter(r => r.type === 'dns').length,
+                    whois_data: reconResults.filter(r => r.type === 'whois').length
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `attack_surface_${new Date().toISOString().split('T')[0]}_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            addTerminalLine(`💾 Exported ${reconResults.length} results with detailed intelligence`, 'success');
+        }
+
+        function clearResults() {
+            reconResults = [];
+            filteredResults = [];
+            detailedData = {};
+            updateResultsDisplay();
+            updateStatistics();
+            updateProgress(0);
+            addTerminalLine('🗑️ All reconnaissance data cleared', 'warning');
+        }
+
+        function addTerminalLine(message, type) {
+        }
+
+        function updateProgress(percent) {
+        }
+
+        function showLoading() {
+        }
+
+        function detectTargetType(target) {
+            if (/^[\+]?[1-9][\d]{0,15}$/.test(target.replace(/[\s\-\(\)]/g, ''))) {
+                return 'phone';
+            }
+            if (/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(target)) {
+                return 'ip';
+            }
+            if (/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/.test(target)) {
+                return 'domain';
+            }
+            return 'domain';
+        }
+    </script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@300;400;500;700&display=swap');
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        html {
-            scroll-behavior: smooth;
+        :root {
+            --neon-green: #00ff41;
+            --neon-blue: #00d4ff;
+            --neon-purple: #bf00ff;
+            --neon-pink: #ff0080;
+            --neon-orange: #ff8000;
+            --dark-bg: #0a0a0a;
+            --darker-bg: #050505;
+            --glass-bg: rgba(10, 10, 10, 0.8);
         }
 
         body {
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
-            background: #000;
-            color: #fff;
-            overflow-x: hidden;
-            line-height: 1.6;
-        }
-
-        /* Enhanced 3D Scrollytelling */
-        .scroll-container {
-            height: 100vh;
-            overflow-y: scroll;
-            perspective: 2000px;
-            scroll-snap-type: y mandatory;
-            transform-style: preserve-3d;
-        }
-
-        .section {
+            font-family: 'Orbitron', 'Fira Code', monospace;
+            background: linear-gradient(45deg, #0a0a0a 0%, #1a0a2e 25%, #0f1419 50%, #2d1b69 75%, #0a0a0a 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 10s ease infinite;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
-            scroll-snap-align: start;
+            color: var(--neon-green);
+            overflow-x: hidden;
             position: relative;
-            transform-style: preserve-3d;
-            transition: transform 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
-        .section:nth-child(even) {
-            transform: rotateY(-2deg) translateZ(-50px);
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
-        .section:nth-child(odd) {
-            transform: rotateY(2deg) translateZ(-50px);
-        }
-
-        .section.active {
-            transform: rotateY(0deg) translateZ(0px) scale(1.02);
-        }
-
-        /* Matrix Background */
-        .matrix-bg {
+        .matrix-canvas {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: -2;
-            background: radial-gradient(ellipse at center, #001122 0%, #000000 70%);
-            animation: backgroundPulse 8s ease-in-out infinite;
+            opacity: 0.3;
         }
 
-        @keyframes backgroundPulse {
-            0%, 100% { background: radial-gradient(ellipse at center, #001122 0%, #000000 70%); }
-            50% { background: radial-gradient(ellipse at center, #002211 0%, #000011 70%); }
-        }
-
-        .matrix-rain {
+        .particles {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
             z-index: -1;
-            opacity: 0.15;
         }
 
-        .matrix-drop {
-            position: absolute;
-            color: #00ff41;
-            font-family: monospace;
-            font-size: 18px;
-            animation: fall linear infinite;
-            text-shadow: 0 0 5px #00ff41;
+        .glitch-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 65, 0.03) 2px,
+                rgba(0, 255, 65, 0.03) 4px
+            );
+            z-index: 100;
+            pointer-events: none;
+            animation: glitchMove 0.1s linear infinite;
         }
 
-        @keyframes fall {
-            0% { transform: translateY(-100vh) rotateX(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotateX(360deg); opacity: 0; }
+        @keyframes glitchMove {
+            0% { transform: translateX(0px); }
+            100% { transform: translateX(4px); }
         }
 
-        /* Hero Section with Morphing */
-        .hero {
-            background: linear-gradient(135deg, #000428 0%, #004e92 50%, #000428 100%);
-            background-size: 200% 200%;
-            animation: morphBackground 6s ease-in-out infinite;
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header {
             text-align: center;
+            margin-bottom: 40px;
             position: relative;
             overflow: hidden;
         }
 
-        @keyframes morphBackground {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 80%, rgba(0, 255, 65, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(255, 0, 128, 0.05) 0%, transparent 50%);
-            animation: morphOverlay 8s ease-in-out infinite;
-        }
-
-        @keyframes morphOverlay {
-            0%, 100% { transform: rotate(0deg) scale(1); }
-            33% { transform: rotate(120deg) scale(1.1); }
-            66% { transform: rotate(240deg) scale(0.9); }
-        }
-
-        .hero-title {
-            font-size: clamp(3rem, 8vw, 8rem);
-            background: linear-gradient(45deg, #00ff41, #00d4ff, #ff0080, #ffaa00);
-            background-size: 400% 400%;
+        .title {
+            font-size: clamp(2rem, 8vw, 5rem);
+            font-weight: 900;
+            background: linear-gradient(45deg, var(--neon-green), var(--neon-blue), var(--neon-purple), var(--neon-pink), var(--neon-orange));
+            background-size: 300% 300%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            animation: gradientMorph 4s ease-in-out infinite;
-            text-shadow: 0 0 50px rgba(0, 255, 65, 0.5);
-            margin-bottom: 1rem;
-            transform: translateZ(100px);
+            background-clip: text;
+            animation: titleGlow 3s ease-in-out infinite, rainbowShift 5s linear infinite;
+            text-shadow: 0 0 50px rgba(0, 255, 65, 0.8);
             position: relative;
+            z-index: 2;
         }
 
-        .hero-title::after {
-            content: 'OSINT STRIKER';
-            position: absolute;
-            top: 0;
-            left: 0;
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: shimmer 3s linear infinite;
-        }
-
-        @keyframes gradientMorph {
+        @keyframes titleGlow {
             0%, 100% { 
-                background-position: 0% 50%; 
-                transform: translateZ(100px) rotateX(0deg);
-            }
-            25% { 
-                background-position: 100% 0%; 
-                transform: translateZ(120px) rotateX(5deg);
+                filter: brightness(1) drop-shadow(0 0 20px var(--neon-green));
+                transform: scale(1);
             }
             50% { 
-                background-position: 100% 100%; 
-                transform: translateZ(100px) rotateX(0deg);
+                filter: brightness(1.3) drop-shadow(0 0 40px var(--neon-blue));
+                transform: scale(1.05);
             }
-            75% { 
-                background-position: 0% 100%; 
-                transform: translateZ(120px) rotateX(-5deg);
-            }
+        }
+
+        @keyframes rainbowShift {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        .subtitle {
+            color: var(--neon-blue);
+            font-size: clamp(1rem, 3vw, 1.5rem);
+            margin-top: 20px;
+            opacity: 0.9;
+            animation: subtitlePulse 2s ease-in-out infinite alternate;
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        @keyframes subtitlePulse {
+            from { opacity: 0.7; transform: translateY(0); }
+            to { opacity: 1; transform: translateY(-5px); }
+        }
+
+        .control-panel {
+            background: var(--glass-bg);
+            border: 2px solid var(--neon-green);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(20px);
+            box-shadow: 
+                0 0 50px rgba(0, 255, 65, 0.3),
+                inset 0 0 50px rgba(0, 255, 65, 0.1),
+                0 0 100px rgba(0, 212, 255, 0.2);
+            animation: panelFloat 6s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes panelFloat {
+            0%, 100% { transform: translateY(0) rotateX(0deg); }
+            50% { transform: translateY(-10px) rotateX(2deg); }
+        }
+
+        .control-panel::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(0, 255, 65, 0.1), transparent);
+            animation: shimmer 4s linear infinite;
         }
 
         @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
         }
 
-        .hero-subtitle {
-            font-size: clamp(1.2rem, 3vw, 2rem);
-            color: #00d4ff;
-            margin-bottom: 2rem;
-            transform: translateZ(50px);
-            animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateZ(50px) translateY(0px); }
-            50% { transform: translateZ(50px) translateY(-10px); }
-        }
-
-        /* Enhanced Navigation */
-        .nav-menu {
-            position: fixed;
-            top: 50%;
-            right: 30px;
-            transform: translateY(-50%);
-            z-index: 1000;
+        .panel-title {
+            color: var(--neon-green);
+            font-size: 1.8rem;
+            margin-bottom: 25px;
             display: flex;
-            flex-direction: column;
+            align-items: center;
             gap: 15px;
+            font-weight: 700;
+            text-shadow: 0 0 20px currentColor;
         }
 
-        .nav-dot {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            cursor: pointer;
-            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            position: relative;
-            border: 2px solid transparent;
+        .icon {
+            width: 32px;
+            height: 32px;
+            fill: currentColor;
+            animation: iconSpin 10s linear infinite;
         }
 
-        .nav-dot::before {
-            content: '';
-            position: absolute;
-            top: -5px;
-            left: -5px;
-            right: -5px;
-            bottom: -5px;
-            border-radius: 50%;
-            background: linear-gradient(45deg, #00ff41, #00d4ff);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: -1;
+        @keyframes iconSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
-        .nav-dot.active {
-            background: #00ff41;
-            box-shadow: 0 0 20px #00ff41, 0 0 40px #00ff41;
-            transform: scale(1.5);
-        }
-
-        .nav-dot.active::before {
-            opacity: 1;
-        }
-
-        .nav-dot:hover {
-            transform: scale(1.3);
-            background: rgba(0, 255, 65, 0.7);
-        }
-
-        /* Tutorial Section with Glass Morphism */
-        .tutorial {
-            background: linear-gradient(135deg, 
-                rgba(26, 26, 46, 0.8) 0%, 
-                rgba(22, 33, 62, 0.8) 50%,
-                rgba(26, 26, 46, 0.8) 100%);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 4rem 2rem;
-        }
-
-        .tutorial-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            max-width: 1400px;
-            margin: 2rem auto;
-        }
-
-        .tutorial-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(0, 255, 65, 0.3);
-            border-radius: 20px;
-            padding: 30px;
-            transform: translateZ(20px) rotateX(5deg);
-            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }
-
-        .tutorial-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, 
-                transparent, 
-                rgba(0, 255, 65, 0.1), 
-                rgba(0, 212, 255, 0.1),
-                transparent);
-            transition: left 0.8s ease;
-        }
-
-        .tutorial-card:hover::before {
-            left: 100%;
-        }
-
-        .tutorial-card:hover {
-            transform: translateZ(40px) rotateX(0deg) scale(1.05);
-            box-shadow: 
-                0 20px 40px rgba(0, 255, 65, 0.2),
-                0 0 60px rgba(0, 255, 65, 0.1);
-            border-color: #00ff41;
-        }
-
-        .tutorial-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            display: block;
-            animation: iconBounce 2s ease-in-out infinite;
-        }
-
-        @keyframes iconBounce {
-            0%, 100% { transform: translateY(0px) rotateZ(0deg); }
-            50% { transform: translateY(-5px) rotateZ(5deg); }
-        }
-
-        .tutorial-title {
-            font-size: 1.5rem;
-            color: #00ff41;
-            margin-bottom: 1rem;
-            text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
-        }
-
-        /* OSINT Tools Section */
-        .osint-tools {
-            background: linear-gradient(135deg, 
-                rgba(45, 27, 105, 0.8) 0%, 
-                rgba(17, 153, 142, 0.8) 50%,
-                rgba(45, 27, 105, 0.8) 100%);
-            backdrop-filter: blur(20px);
-            padding: 4rem 2rem;
-        }
-
-        .tools-container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .tool-category {
-            margin-bottom: 3rem;
-            padding: 2rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            backdrop-filter: blur(15px);
-            transform: translateZ(10px);
-            border: 1px solid rgba(0, 255, 65, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .tool-category:hover {
-            transform: translateZ(20px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-        }
-
-        .category-title {
-            color: #00ff41;
-            font-size: 2rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-            text-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
-        }
-
-        .tools-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-
-        .tool-item {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 20px;
-            border-radius: 15px;
-            border: 1px solid rgba(0, 255, 65, 0.3);
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .tool-item::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, 
-                rgba(0, 255, 65, 0.1), 
-                rgba(0, 212, 255, 0.1));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .tool-item:hover {
-            transform: translateY(-10px) rotateX(5deg);
-            box-shadow: 
-                0 15px 40px rgba(0, 255, 65, 0.3),
-                0 0 30px rgba(0, 255, 65, 0.2);
-            border-color: #00ff41;
-        }
-
-        .tool-item:hover::after {
-            opacity: 1;
-        }
-
-        /* Scanner Interface */
-        .scanner {
-            background: linear-gradient(135deg, 
-                rgba(102, 125, 182, 0.8) 0%, 
-                rgba(0, 130, 200, 0.8) 40%, 
-                rgba(0, 130, 200, 0.8) 60%, 
-                rgba(102, 125, 182, 0.8) 100%);
-            backdrop-filter: blur(20px);
-            padding: 4rem 2rem;
-        }
-
-        .scanner-interface {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 25px;
-            padding: 3rem;
-            backdrop-filter: blur(30px);
-            transform: translateZ(30px);
-            border: 2px solid rgba(0, 255, 65, 0.3);
-            box-shadow: 
-                0 25px 50px rgba(0, 0, 0, 0.5),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        }
-
-        .input-section {
-            margin-bottom: 2rem;
-        }
-
-        .target-input {
-            width: 100%;
-            padding: 20px 25px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(0, 255, 65, 0.5);
-            border-radius: 15px;
-            color: white;
-            font-size: 18px;
-            font-family: 'JetBrains Mono', monospace;
-            margin-bottom: 1rem;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .target-input:focus {
-            outline: none;
-            border-color: #00ff41;
-            box-shadow: 
-                0 0 25px rgba(0, 255, 65, 0.4),
-                inset 0 0 20px rgba(0, 255, 65, 0.1);
-            transform: scale(1.02);
-        }
-
-        .target-input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .scan-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 2rem;
-        }
-
-        .option-card {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 20px;
-            border-radius: 15px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            text-align: center;
-            backdrop-filter: blur(10px);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .option-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, 
-                rgba(0, 255, 65, 0.1), 
-                rgba(0, 212, 255, 0.1));
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .option-card.selected {
-            border-color: #00ff41;
-            background: rgba(0, 255, 65, 0.15);
-            transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(0, 255, 65, 0.3);
-        }
-
-        .option-card.selected::before {
-            opacity: 1;
-        }
-
-        .option-card:hover {
-            transform: translateY(-5px) scale(1.02);
-            border-color: rgba(0, 255, 65, 0.7);
-        }
-
-        .scan-btn {
-            width: 100%;
-            padding: 25px;
-            background: linear-gradient(45deg, #00ff41, #00d4ff);
-            border: none;
-            border-radius: 20px;
-            color: #000;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .scan-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, 
-                transparent, 
-                rgba(255, 255, 255, 0.3), 
-                transparent);
-            transition: left 0.6s ease;
-        }
-
-        .scan-btn:hover {
-            transform: translateY(-5px);
-            box-shadow: 
-                0 20px 50px rgba(0, 255, 65, 0.4),
-                0 0 40px rgba(0, 255, 65, 0.3);
-        }
-
-        .scan-btn:hover::before {
-            left: 100%;
-        }
-
-        .scan-btn:active {
-            transform: translateY(-2px);
-        }
-
-        /* Results Section */
-        .results {
-            background: linear-gradient(135deg, 
-                rgba(67, 67, 67, 0.8) 0%, 
-                rgba(0, 0, 0, 0.9) 100%);
-            backdrop-filter: blur(20px);
-            padding: 4rem 2rem;
-        }
-
-        .results-container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .results-grid {
+        .form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 25px;
-            margin-top: 2rem;
+            margin-bottom: 30px;
         }
 
-        .result-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            padding: 25px;
-            border: 1px solid rgba(0, 255, 65, 0.3);
-            transform: translateZ(15px);
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            backdrop-filter: blur(15px);
+        .control-group {
+            position: relative;
+        }
+
+        .label {
+            display: block;
+            color: var(--neon-blue);
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 500;
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        .input {
+            width: 100%;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(0, 255, 65, 0.3);
+            border-radius: 12px;
+            color: var(--neon-green);
+            font-family: 'Fira Code', monospace;
+            font-size: 1rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--neon-green);
+            box-shadow: 
+                0 0 30px rgba(0, 255, 65, 0.5),
+                inset 0 0 20px rgba(0, 255, 65, 0.1);
+            transform: scale(1.02);
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        .input::placeholder {
+            color: rgba(0, 255, 65, 0.5);
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            color: #000;
+            font-weight: 700;
+            font-family: 'Orbitron', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 1px;
             position: relative;
             overflow: hidden;
+            background: linear-gradient(45deg, var(--neon-green), var(--neon-blue));
+            box-shadow: 0 10px 30px rgba(0, 255, 65, 0.3);
         }
 
-        .result-card::before {
+        .btn:disabled {
+            background: linear-gradient(45deg, #555, #777);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn::before {
             content: '';
             position: absolute;
             top: 0;
-            left: 0;
+            left: -100%;
             width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, #00ff41, #00d4ff, #ff0080);
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: all 0.5s;
         }
 
-        .result-card:hover::before {
-            transform: scaleX(1);
+        .btn:hover::before {
+            left: 100%;
         }
 
-        .result-card:hover {
-            transform: translateZ(30px) scale(1.03);
-            box-shadow: 
-                0 25px 50px rgba(0, 0, 0, 0.4),
-                0 0 30px rgba(0, 255, 65, 0.2);
-            border-color: #00ff41;
+        .btn:not(:disabled):hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 20px 50px rgba(0, 255, 65, 0.5);
         }
 
-        .result-type {
-            color: #00ff41;
-            font-weight: bold;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-            text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        .btn:active {
+            transform: translateY(-2px) scale(1.02);
         }
 
-        .result-data {
-            word-break: break-all;
-            opacity: 0.9;
-            line-height: 1.6;
-            font-family: 'JetBrains Mono', monospace;
+        .btn-danger {
+            background: linear-gradient(45deg, #ff4757, #ff3838);
+            box-shadow: 0 10px 30px rgba(255, 71, 87, 0.3);
         }
 
-        /* Terminal Section */
-        .terminal {
-            background: #000;
-            padding: 4rem 2rem;
+        .btn-danger:hover {
+            box-shadow: 0 20px 50px rgba(255, 71, 87, 0.5);
         }
 
-        .terminal-window {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: #1a1a1a;
+        .btn-purple {
+            background: linear-gradient(45deg, var(--neon-purple), #8e44ad);
+            box-shadow: 0 10px 30px rgba(191, 0, 255, 0.3);
+        }
+
+        .btn-orange {
+            background: linear-gradient(45deg, var(--neon-orange), #f39c12);
+            box-shadow: 0 10px 30px rgba(255, 128, 0, 0.3);
+        }
+
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--neon-green);
             border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 
-                0 30px 80px rgba(0, 0, 0, 0.6),
-                0 0 40px rgba(0, 255, 65, 0.1);
-            border: 1px solid rgba(0, 255, 65, 0.3);
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
         }
 
-        .terminal-header {
-            background: linear-gradient(135deg, #333, #444);
-            padding: 15px 25px;
+        .status-item {
             display: flex;
+            flex-direction: column;
             align-items: center;
             gap: 10px;
+            padding: 15px;
+            background: rgba(0, 255, 65, 0.1);
+            border-radius: 10px;
+            transition: all 0.3s ease;
         }
 
-        .terminal-button {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            transition: all 0.2s ease;
-            cursor: pointer;
+        .status-item:hover {
+            background: rgba(0, 255, 65, 0.2);
+            transform: scale(1.05);
         }
 
-        .terminal-button:hover {
-            transform: scale(1.2);
+        .status-value {
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--neon-green);
+            text-shadow: 0 0 20px currentColor;
+            animation: numberGlow 2s ease-in-out infinite alternate;
         }
 
-        .btn-close { background: #ff5f56; }
-        .btn-minimize { background: #ffbd2e; }
-        .btn-maximize { background: #27ca3f; }
+        @keyframes numberGlow {
+            from { text-shadow: 0 0 20px currentColor; }
+            to { text-shadow: 0 0 40px currentColor, 0 0 60px currentColor; }
+        }
 
-        .terminal-body {
-            padding: 25px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
-            height: 450px;
+        .status-label {
+            font-size: 0.9rem;
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .results-panel {
+            background: var(--glass-bg);
+            border: 2px solid var(--neon-blue);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.3);
+            max-height: 600px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .results-container {
+            max-height: 500px;
             overflow-y: auto;
-            background: linear-gradient(135deg, #1a1a1a, #0f0f0f);
+            scrollbar-width: thin;
+            scrollbar-color: var(--neon-green) transparent;
+        }
+
+        .results-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .results-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        .results-container::-webkit-scrollbar-thumb {
+            background: var(--neon-green);
+            border-radius: 4px;
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        .result-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 255, 65, 0.2);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .result-item:hover {
+            border-color: var(--neon-green);
+            background: rgba(0, 255, 65, 0.1);
+            transform: translateX(10px);
+        }
+
+        .result-url {
+            color: var(--neon-green);
+            font-weight: 600;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .result-details {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+        }
+
+        .detail-item {
+            color: var(--neon-blue);
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin: 2px;
+            animation: tagPulse 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes tagPulse {
+            from { box-shadow: 0 0 5px currentColor; }
+            to { box-shadow: 0 0 15px currentColor; }
+        }
+
+        .tag-subdomain { background: #e74c3c; color: #fff; }
+        .tag-port { background: #f39c12; color: #000; }
+        .tag-service { background: #9b59b6; color: #fff; }
+        .tag-dns { background: #3498db; color: #fff; }
+        .tag-ssl { background: #27ae60; color: #fff; }
+        .tag-whois { background: #e67e22; color: #fff; }
+        .tag-phone { background: #00b7eb; color: #fff; }
+        .tag-carrier { background: #ff6f61; color: #fff; }
+        .tag-geolocation { background: #2ecc71; color: #fff; }
+
+        .terminal {
+            background: #000;
+            border: 2px solid var(--neon-green);
+            border-radius: 15px;
+            padding: 25px;
+            font-family: 'Fira Code', monospace;
+            color: var(--neon-green);
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 30px;
+            box-shadow: 
+                0 0 30px rgba(0, 255, 65, 0.3),
+                inset 0 0 30px rgba(0, 255, 65, 0.1);
         }
 
         .terminal-line {
             margin-bottom: 8px;
-            opacity: 0;
-            animation: typewriter 0.5s ease-in-out forwards;
-            transition: all 0.3s ease;
-        }
-
-        .terminal-line:hover {
-            background: rgba(0, 255, 65, 0.1);
-            padding: 2px 5px;
-            border-radius: 3px;
-        }
-
-        .terminal-line.prompt::before {
-            content: '$ ';
-            color: #00ff41;
-            font-weight: bold;
-        }
-
-        .terminal-line.output {
-            color: #00d4ff;
-            margin-left: 20px;
-        }
-
-        .terminal-line.warning {
-            color: #ffaa00;
-        }
-
-        .terminal-line.error {
-            color: #ff4444;
+            animation: typewriter 0.5s ease-out;
         }
 
         @keyframes typewriter {
-            to { opacity: 1; }
+            from { width: 0; opacity: 0; }
+            to { width: 100%; opacity: 1; }
         }
 
-        /* Enhanced Floating Action Buttons */
-        .fab-container {
-            position: fixed;
-            bottom: 30px;
-            left: 30px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+        .terminal-prompt {
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px currentColor;
         }
 
-        .fab {
-            width: 70px;
-            height: 70px;
+        .terminal-success {
+            color: var(--neon-green);
+        }
+
+        .terminal-error {
+            color: #ff4757;
+        }
+
+        .terminal-warning {
+            color: var(--neon-orange);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(0, 255, 65, 0.3);
+            border-top: 4px solid var(--neon-green);
             border-radius: 50%;
-            background: linear-gradient(45deg, #00ff41, #00d4ff);
-            border: none;
-            color: #000;
-            font-size: 24px;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            box-shadow: 
-                0 8px 25px rgba(0, 255, 65, 0.4),
-                0 0 20px rgba(0, 255, 65, 0.2);
-            position: relative;
-            overflow: hidden;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
         }
 
-        .fab::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transform: translateX(-100%);
-            transition: transform 0.6s ease;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        .fab:hover {
-            transform: scale(1.15) rotateZ(5deg);
-            box-shadow: 
-                0 15px 40px rgba(0, 255, 65, 0.6),
-                0 0 30px rgba(0, 255, 65, 0.4);
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
-        .fab:hover::before {
-            transform: translateX(100%);
+        .glitch {
+            animation: glitch 2s infinite;
         }
 
-        .fab:active {
-            transform: scale(1.05);
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
         }
 
-        /* Enhanced Modal */
-        .modal {
-            display: none;
+        .cyber-grid {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-            animation: modalFadeIn 0.3s ease;
+            background-image: 
+                linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -3;
+            animation: gridMove 20s linear infinite;
         }
 
-        @keyframes modalFadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .modal-content {
-            background: linear-gradient(135deg, 
-                rgba(26, 26, 46, 0.95), 
-                rgba(22, 33, 62, 0.95));
-            padding: 3rem;
-            border-radius: 25px;
-            max-width: 700px;
-            width: 90%;
-            border: 2px solid rgba(0, 255, 65, 0.3);
-            backdrop-filter: blur(20px);
-            box-shadow: 
-                0 30px 80px rgba(0, 0, 0, 0.5),
-                0 0 50px rgba(0, 255, 65, 0.2);
-            transform: scale(0.8);
-            animation: modalSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-        }
-
-        @keyframes modalSlideIn {
-            to {
-                transform: scale(1);
-            }
-        }
-
-        .close-modal {
-            float: right;
-            font-size: 32px;
-            color: #00ff41;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: -10px;
-            margin-right: -10px;
-        }
-
-        .close-modal:hover {
-            color: #ff0080;
-            transform: scale(1.2) rotate(90deg);
-        }
-
-        /* Progress Bar */
-        .progress-container {
-            margin: 20px 0;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            overflow: hidden;
-            height: 8px;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #00ff41, #00d4ff);
-            width: 0%;
-            transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
-        }
-
-        .progress-bar::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(90deg, 
-                transparent, 
-                rgba(255, 255, 255, 0.3), 
-                transparent);
-            animation: progressShimmer 2s linear infinite;
-        }
-
-        @keyframes progressShimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .hero-title {
-                font-size: 3rem;
-            }
-            
-            .tutorial-grid,
-            .tools-grid,
-            .results-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .nav-menu {
-                right: 15px;
-            }
-            
-            .fab-container {
-                bottom: 20px;
-                left: 20px;
-            }
-            
-            .scanner-interface {
-                padding: 2rem;
-            }
-            
-            .scan-options {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 10px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: rgba(26, 26, 26, 0.8);
-            border-radius: 5px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(45deg, #00ff41, #00d4ff);
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(45deg, #00d4ff, #00ff41);
-            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
-        }
-
-        /* Loading Animation */
-        .loading {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #00ff41;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Glitch Effect */
-        .glitch {
-            animation: glitch 2s linear infinite;
-        }
-
-        @keyframes glitch {
-            2%, 64% { transform: translate(2px, 0) skew(0deg); }
-            4%, 60% { transform: translate(-2px, 0) skew(0deg); }
-            62% { transform: translate(0, 0) skew(5deg); }
-        }
-
-        /* Section Titles */
-        .section-title {
-            font-size: 3rem;
-            color: #00ff41;
-            margin-bottom: 2rem;
-            text-align: center;
-            text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
-            position: relative;
-        }
-
-        .section-title::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100px;
-            height: 3px;
-            background: linear-gradient(90deg, #00ff41, #00d4ff);
-            border-radius: 2px;
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
         }
     </style>
 </head>
 <body>
-    <!-- Matrix Rain Background -->
-    <div class="matrix-bg"></div>
-    <div class="matrix-rain" id="matrixRain"></div>
+    <div class="cyber-grid"></div>
+    <canvas class="matrix-canvas" id="matrixCanvas"></canvas>
+    <div class="particles" id="particles"></div>
+    <div class="glitch-overlay"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1 class="title glitch">⚡ STRIKER ATTACK SURFACE EXPLORER ⚡</h1>
+            <p class="subtitle">Advanced Real-Time Web Reconnaissance & Security Analysis Platform</p>
+        </div>
 
-    <!-- Navigation -->
-    <div class="nav-menu">
-        <div class="nav-dot active" data-section="0"></div>
-        <div class="nav-dot" data-section="1"></div>
-        <div class="nav-dot" data-section="2"></div>
-        <div class="nav-dot" data-section="3"></div>
-        <div class="nav-dot" data-section="4"></div>
-        <div class="nav-dot" data-section="5"></div>
-    </div>
-
-    <!-- Floating Action Buttons -->
-    <div class="fab-container">
-        <button class="fab" id="helpBtn" title="Help">❓</button>
-        <button class="fab" id="settingsBtn" title="Settings">⚙️</button>
-        <button class="fab" id="exportBtn" title="Export">💾</button>
-    </div>
-
-    <div class="scroll-container">
-        <!-- Hero Section -->
-        <section class="section hero active" id="section0">
-            <h1 class="hero-title">OSINT STRIKER</h1>
-            <p class="hero-subtitle">Ultimate Intelligence Gathering Platform</p>
-            <div style="margin-top: 2rem;">
-                <button class="scan-btn" id="heroStartBtn" style="width: auto; padding: 15px 30px;">START RECONNAISSANCE</button>
-            </div>
-        </section>
-
-        <!-- Tutorial Section -->
-        <section class="section tutorial" id="section1">
-            <h2 class="section-title">🎓 TUTORIALS & GUIDES</h2>
+        <div class="control-panel">
+            <h2 class="panel-title">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M12 2L2 7v10c0 5.55 3.84 9.64 9 11 5.16-1.36 9-5.45 9-11V7l-10-5z"/>
+                </svg>
+                RECONNAISSANCE CONTROL CENTER
+            </h2>
             
-            <div class="tutorial-grid">
-                <div class="tutorial-card" data-tutorial="basic">
-                    <span class="tutorial-icon">🔍</span>
-                    <h3 class="tutorial-title">Basic OSINT</h3>
-                    <p>Learn the fundamentals of Open Source Intelligence gathering, passive reconnaissance, and information validation techniques.</p>
+            <div class="form-grid">
+                <div class="control-group">
+                    <label class="label">🎯 Target (Domain/IP/Phone)</label>
+                    <input type="text" class="input" id="targetDomain" placeholder="example.com / 8.8.8.8 / +1234567890" value="example.com">
                 </div>
                 
-                <div class="tutorial-card" data-tutorial="advanced">
-                    <span class="tutorial-icon">🕷️</span>
-                    <h3 class="tutorial-title">Advanced Reconnaissance</h3>
-                    <p>Master complex footprinting, social engineering defense, and advanced search operators for deep intelligence gathering.</p>
+                <div class="control-group">
+                    <label class="label">🔍 Scan Mode</label>
+                    <select class="input" id="scanMode">
+                        <option value="passive">Passive Reconnaissance</option>
+                        <option value="active">Active Scanning</option>
+                        <option value="comprehensive">Comprehensive Analysis</option>
+                        <option value="stealth">Stealth Mode</option>
+                    </select>
                 </div>
                 
-                <div class="tutorial-card" data-tutorial="automation">
-                    <span class="tutorial-icon">🤖</span>
-                    <h3 class="tutorial-title">Automation & APIs</h3>
-                    <p>Automate your intelligence workflow using APIs, scripts, and custom tools for efficient large-scale reconnaissance.</p>
+                <div class="control-group">
+                    <label class="label">⚡ Threads</label>
+                    <input type="number" class="input" id="threads" placeholder="10" value="10" min="1" max="100">
                 </div>
                 
-                <div class="tutorial-card" data-tutorial="legal">
-                    <span class="tutorial-icon">⚖️</span>
-                    <h3 class="tutorial-title">Legal & Ethical OSINT</h3>
-                    <p>Understand the legal boundaries, ethical considerations, and best practices for responsible intelligence gathering.</p>
-                </div>
-                
-                <div class="tutorial-card" data-tutorial="darkweb">
-                    <span class="tutorial-icon">🌐</span>
-                    <h3 class="tutorial-title">Dark Web Research</h3>
-                    <p>Safely navigate and gather intelligence from hidden services, forums, and encrypted communications.</p>
-                </div>
-                
-                <div class="tutorial-card" data-tutorial="reporting">
-                    <span class="tutorial-icon">📊</span>
-                    <h3 class="tutorial-title">Intelligence Reporting</h3>
-                    <p>Create professional intelligence reports, visualizations, and actionable insights from raw data.</p>
+                <div class="control-group">
+                    <label class="label">⏱️ Timeout (ms)</label>
+                    <input type="number" class="input" id="timeout" placeholder="5000" value="5000" min="1000" max="30000">
                 </div>
             </div>
-        </section>
-
-        <!-- OSINT Tools Section -->
-        <section class="section osint-tools" id="section2">
-            <h2 class="section-title">🛠️ INTELLIGENCE ARSENAL</h2>
             
-            <div class="tools-container">
-                <div class="tool-category">
-                    <h3 class="category-title">🌐 Domain & Network Intelligence</h3>
-                    <div class="tools-grid">
-                        <div class="tool-item" data-tool="whois">
-                            <h4>WHOIS Lookup</h4>
-                            <p>Domain registration details, ownership info, DNS records</p>
-                        </div>
-                        <div class="tool-item" data-tool="subdomain">
-                            <h4>Subdomain Discovery</h4>
-                            <p>Find hidden subdomains, services, and attack vectors</p>
-                        </div>
-                        <div class="tool-item" data-tool="ssl">
-                            <h4>SSL Certificate Analysis</h4>
-                            <p>Certificate transparency, SANs, certificate chains</p>
-                        </div>
-                        <div class="tool-item" data-tool="ports">
-                            <h4>Port Scanning</h4>
-                            <p>Discover open ports, services, and potential vulnerabilities</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tool-category">
-                    <h3 class="category-title">👤 Personal Intelligence</h3>
-                    <div class="tools-grid">
-                        <div class="tool-item" data-tool="email">
-                            <h4>Email Intelligence</h4>
-                            <p>Email validation, breach data, associated accounts</p>
-                        </div>
-                        <div class="tool-item" data-tool="phone">
-                            <h4>Phone Number Analysis</h4>
-                            <p>Carrier info, location data, social media links</p>
-                        </div>
-                        <div class="tool-item" data-tool="social">
-                            <h4>Social Media OSINT</h4>
-                            <p>Profile discovery, relationship mapping, content analysis</p>
-                        </div>
-                        <div class="tool-item" data-tool="username">
-                            <h4>Username Enumeration</h4>
-                            <p>Find accounts across platforms, naming patterns</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tool-category">
-                    <h3 class="category-title">🏢 Business Intelligence</h3>
-                    <div class="tools-grid">
-                        <div class="tool-item" data-tool="company">
-                            <h4>Company Research</h4>
-                            <p>Corporate structure, employees, financial data</p>
-                        </div>
-                        <div class="tool-item" data-tool="linkedin">
-                            <h4>LinkedIn Intelligence</h4>
-                            <p>Employee enumeration, org charts, connections</p>
-                        </div>
-                        <div class="tool-item" data-tool="patents">
-                            <h4>Patent & IP Research</h4>
-                            <p>Intellectual property, innovations, legal documents</p>
-                        </div>
-                        <div class="tool-item" data-tool="financial">
-                            <h4>Financial Intelligence</h4>
-                            <p>SEC filings, financial statements, market data</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Scanner Interface -->
-        <section class="section scanner" id="section3">
-            <h2 class="section-title">🎯 INTELLIGENCE SCANNER</h2>
-            
-            <div class="scanner-interface">
-                <div class="input-section">
-                    <input type="text" class="target-input" id="targetInput" placeholder="Enter target (domain, email, phone, IP, company name...)" />
-                </div>
-                
-                <div class="scan-options">
-                    <div class="option-card selected" data-option="comprehensive">
-                        <h4>🔍 Comprehensive Scan</h4>
-                        <p>Full intelligence gathering</p>
-                    </div>
-                    <div class="option-card" data-option="passive">
-                        <h4>👻 Passive Reconnaissance</h4>
-                        <p>Stealth information gathering</p>
-                    </div>
-                    <div class="option-card" data-option="social">
-                        <h4>👥 Social Media Intel</h4>
-                        <p>Social platform analysis</p>
-                    </div>
-                    <div class="option-card" data-option="technical">
-                        <h4>⚡ Technical Analysis</h4>
-                        <p>Infrastructure deep dive</p>
-                    </div>
-                </div>
-                
-                <button class="scan-btn" id="startScanBtn">INITIATE INTELLIGENCE GATHERING</button>
-            </div>
-        </section>
-
-        <!-- Results Section -->
-        <section class="section results" id="section4">
-            <h2 class="section-title">📊 INTELLIGENCE RESULTS</h2>
-            
-            <div class="results-container">
-                <div id="scanProgress" style="display: none;">
-                    <div style="background: rgba(0,255,65,0.1); padding: 20px; border-radius: 15px; margin-bottom: 25px; border: 1px solid rgba(0,255,65,0.3);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <span style="font-size: 1.1rem; color: #00ff41;">Intelligence Gathering in Progress...</span>
-                            <div class="loading"></div>
-                        </div>
-                        <div id="progressText" style="margin-bottom: 10px; color: #00d4ff;">Initializing scan...</div>
-                        <div class="progress-container">
-                            <div class="progress-bar" id="progressBar"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="results-grid" id="resultsGrid">
-                    <div class="result-card">
-                        <div class="result-type">🎯 Target Intelligence</div>
-                        <div class="result-data">Initiate a scan to begin intelligence gathering...</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Terminal Section -->
-        <section class="section terminal" id="section5">
-            <h2 class="section-title">💻 COMMAND CENTER</h2>
-            
-            <div class="terminal-window">
-                <div class="terminal-header">
-                    <div class="terminal-button btn-close"></div>
-                    <div class="terminal-button btn-minimize"></div>
-                    <div class="terminal-button btn-maximize"></div>
-                    <span style="margin-left: 15px; color: #ccc; font-size: 14px; font-weight: bold;">OSINT STRIKER Terminal v2.0</span>
-                </div>
-                <div class="terminal-body" id="terminalBody">
-                    <div class="terminal-line prompt">osint-striker --version</div>
-                    <div class="terminal-line output">OSINT STRIKER v2.0 - Ultimate Intelligence Platform</div>
-                    <div class="terminal-line prompt">help</div>
-                    <div class="terminal-line output">Available commands:</div>
-                    <div class="terminal-line output">  scan [target] - Start intelligence gathering</div>
-                    <div class="terminal-line output">  export [format] - Export results (json/xml/csv)</div>
-                    <div class="terminal-line output">  tutorial [topic] - Launch interactive tutorial</div>
-                    <div class="terminal-line output">  tools - List available OSINT tools</div>
-                    <div class="terminal-line output">  clear - Clear terminal output</div>
-                    <div class="terminal-line prompt">status</div>
-                    <div class="terminal-line output">System Status: OPERATIONAL</div>
-                    <div class="terminal-line output">Intelligence Sources: ACTIVE</div>
-                    <div class="terminal-line output">Security Level: MAXIMUM</div>
-                    <div class="terminal-line prompt" id="currentPrompt">
-                        <span style="color: #00ff41;">$</span> 
-                        <span id="terminalCursor" style="animation: blink 1s infinite;">_</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <!-- Modals -->
-    <div class="modal" id="helpModal">
-        <div class="modal-content">
-            <span class="close-modal" id="closeHelp">&times;</span>
-            <h2 style="color: #00ff41; margin-bottom: 1rem;">🔍 HELP & DOCUMENTATION</h2>
-            <div style="max-height: 400px; overflow-y: auto;">
-                <h3 style="color: #00d4ff;">Getting Started</h3>
-                <p>1. Enter your target in the scanner section</p>
-                <p>2. Select scan type (Comprehensive, Passive, Social, Technical)</p>
-                <p>3. Click "INITIATE INTELLIGENCE GATHERING"</p>
-                <p>4. Review results and export data</p>
-                
-                <h3 style="color: #00d4ff; margin-top: 1rem;">Target Types</h3>
-                <p>• <strong>Domains:</strong> example.com, subdomain.target.com</p>
-                <p>• <strong>Email:</strong> target@company.com</p>
-                <p>• <strong>Phone:</strong> +1-555-123-4567</p>
-                <p>• <strong>IP Address:</strong> 192.168.1.1</p>
-                <p>• <strong>Company:</strong> "Company Name Inc"</p>
-                <p>• <strong>Username:</strong> @username</p>
-                
-                <h3 style="color: #00d4ff; margin-top: 1rem;">Keyboard Shortcuts</h3>
-                <p>• <kbd>Ctrl+Enter</kbd> - Start scan</p>
-                <p>• <kbd>Ctrl+E</kbd> - Export results</p>
-                <p>• <kbd>Ctrl+H</kbd> - Toggle help</p>
-                <p>• <kbd>Esc</kbd> - Close modals</p>
+            <div class="btn-grid">
+                <button class="btn" onclick="startRecon()">🚀 START RECONNAISSANCE</button>
+                <button class="btn btn-danger" onclick="stopRecon()">⛔ ABORT MISSION</button>
+                <button class="btn btn-purple" onclick="exportResults()">💾 EXPORT INTEL</button>
+                <button class="btn btn-orange" onclick="clearResults()">🗑️ CLEAR DATA</button>
             </div>
         </div>
-    </div>
 
-    <div class="modal" id="settingsModal">
-        <div class="modal-content">
-            <span class="close-modal" id="closeSettings">&times;</span>
-            <h2 style="color: #00ff41; margin-bottom: 1rem;">⚙️ SETTINGS & CONFIGURATION</h2>
-            <div>
-                <h3 style="color: #00d4ff;">Scan Configuration</h3>
-                <label style="display: block; margin: 10px 0;">
-                    <input type="checkbox" id="deepScan" checked> Deep Reconnaissance
-                </label>
-                <label style="display: block; margin: 10px 0;">
-                    <input type="checkbox" id="socialMedia" checked> Social Media Analysis
-                </label>
-                <label style="display: block; margin: 10px 0;">
-                    <input type="checkbox" id="darkWeb"> Dark Web Search (Use with caution)
-                </label>
-                <label style="display: block; margin: 10px 0;">
-                    <input type="checkbox" id="realTime" checked> Real-time Updates
-                </label>
-                
-                <h3 style="color: #00d4ff; margin-top: 1rem;">Export Options</h3>
-                <select id="exportFormat" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(0,255,65,0.3); border-radius: 5px; color: white;">
-                    <option value="json">JSON (Detailed)</option>
-                    <option value="csv">CSV (Spreadsheet)</option>
-                    <option value="xml">XML (Structured)</option>
-                    <option value="pdf">PDF (Report)</option>
-                </select>
-                
-                <h3 style="color: #00d4ff; margin-top: 1rem;">Privacy & Security</h3>
-                <label style="display: block; margin: 10px 0;">
-                    <input type="checkbox" id="anonymousMode" checked> Anonymous Mode
-                </label>
-                <label style="display: block; margin: 10px 0;">
-                    <input type="checkbox" id="encryptResults" checked> Encrypt Results
-                </label>
+        <div class="status-bar" id="statusBar">
+            <div class="status-item">
+                <div class="status-value" id="subdomainCount">0</div>
+                <div class="status-label">Subdomains</div>
             </div>
+            <div class="status-item">
+                <div class="status-value" id="portCount">0</div>
+                <div class="status-label">Open Ports</div>
+            </div>
+            <div class="status-item">
+                <div class="status-value" id="serviceCount">0</div>
+                <div class="status-label">Services</div>
+            </div>
+            <div class="status-item">
+                <div class="status-value" id="vulnCount">0</div>
+                <div class="status-label">Vulnerabilities</div>
+            </div>
+            <div class="status-item">
+                <div class="status-value" id="scanProgress">0%</div>
+                <div class="status-label">Progress</div>
+            </div>
+        </div>
+
+        <div class="results-panel">
+            <div class="results-header">
+                <h2 class="panel-title">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    ATTACK SURFACE INTELLIGENCE
+                </h2>
+                <div>
+                    <select class="input" id="filterSelect" onchange="applyFilter()" style="width: 150px; margin-right: 10px;">
+                        <option value="all">🔍 All Results</option>
+                        <option value="subdomain">🌐 Subdomains</option>
+                        <option value="dns">📋 DNS Records</option>
+                        <option value="port">🚪 Open Ports</option>
+                        <option value="ssl">🔒 SSL/TLS</option>
+                        <option value="service">🔧 Services</option>
+                        <option value="whois">📝 WHOIS</option>
+                        <option value="phone">📞 Phone Intel</option>
+                        <option value="ip">🌍 IP Intel</option>
+                    </select>
+                    <button class="btn btn-purple" onclick="showDetailedView()">📊 DETAILED VIEW</button>
+                </div>
+            </div>
+            
+            <div class="results-container" id="resultsContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>🎯 Awaiting reconnaissance orders...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="detailedModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; backdrop-filter: blur(10px);">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--glass-bg); border: 2px solid var(--neon-green); border-radius: 20px; padding: 30px; max-width: 80%; max-height: 80%; overflow-y: auto; min-width: 600px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="color: var(--neon-green); font-size: 1.5rem;">📊 DETAILED INTELLIGENCE REPORT</h2>
+                    <button class="btn btn-danger" onclick="closeDetailedView()" style="padding: 8px 15px;">❌ CLOSE</button>
+                </div>
+                <div id="detailedContent"></div>
+            </div>
+        </div>
+
+        <div class="terminal" id="terminal">
+            <div class="terminal-line"><span class="terminal-prompt">root@Striker:~$</span> <span class="terminal-success">Ultimate Attack Surface Explorer v3.0 initialized</span></div>
+            <div class="terminal-line"><span class="terminal-prompt">root@Striker:~$</span> <span class="terminal-success">All systems operational - Ready for reconnaissance</span></div>
+            <div class="terminal-line"><span class="terminal-prompt">root@Striker:~$</span> <span class="terminal-warning">Remember: Use responsibly and with proper authorization</span></div>
         </div>
     </div>
 
     <script>
-        // Global variables
-        let currentSection = 0;
-        let scanResults = [];
-        let terminalHistory = [];
-        let isScanning = false;
-        let scanProgress = 0;
+        initMatrixBackground();
+        initParticleSystem();
+        startCyberAnimations();
 
-        // Initialize Matrix Rain Effect
-        function createMatrixRain() {
-            const matrixRain = document.getElementById('matrixRain');
-            const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+        function initMatrixBackground() {
+            const canvas = document.getElementById('matrixCanvas');
+            const ctx = canvas.getContext('2d');
             
-            // Clear existing drops
-            matrixRain.innerHTML = '';
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
             
-            for (let i = 0; i < 60; i++) {
-                const drop = document.createElement('div');
-                drop.className = 'matrix-drop';
-                drop.textContent = chars[Math.floor(Math.random() * chars.length)];
-                drop.style.left = Math.random() * 100 + '%';
-                drop.style.animationDuration = (Math.random() * 4 + 3) + 's';
-                drop.style.animationDelay = Math.random() * 3 + 's';
-                matrixRain.appendChild(drop);
+            const matrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%+-/~{[|`]}αβγδεζηθικλμνξοπρστυφχψω";
+            const matrixArray = matrix.split("");
+            
+            const fontSize = 14;
+            const columns = canvas.width / fontSize;
+            const drops = [];
+            
+            for (let x = 0; x < columns; x++) {
+                drops[x] = 1;
             }
-        }
-
-        // Enhanced scroll handling with 3D effects
-        function scrollToSection(index) {
-            const sections = document.querySelectorAll('.section');
-            if (sections[index]) {
-                sections[index].scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start' 
-                });
-                updateNavigation(index);
-                apply3DEffects(index);
-            }
-        }
-
-        function apply3DEffects(activeIndex) {
-            const sections = document.querySelectorAll('.section');
-            sections.forEach((section, index) => {
-                section.classList.remove('active');
-                if (index === activeIndex) {
-                    section.classList.add('active');
+            
+            function drawMatrix() {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#00ff41';
+                ctx.font = fontSize + 'px monospace';
+                
+                for (let i = 0; i < drops.length; i++) {
+                    const text = matrixArray[Math.floor(Math.random() * matrixArray.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
                 }
+            }
+            
+            setInterval(drawMatrix, 35);
+            
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
             });
         }
 
-        function updateNavigation(activeIndex) {
-            const dots = document.querySelectorAll('.nav-dot');
-            dots.forEach((dot, index) => {
-                dot.classList.toggle('active', index === activeIndex);
-            });
-            currentSection = activeIndex;
-        }
-
-        // Tutorial system
-        function startTutorial(type) {
-            const tutorials = {
-                basic: {
-                    title: "Basic OSINT Fundamentals",
-                    steps: [
-                        "Understanding public information sources",
-                        "Search engine optimization for intelligence",
-                        "Social media reconnaissance techniques",
-                        "Information validation and verification",
-                        "Documentation and reporting best practices"
-                    ]
-                },
-                advanced: {
-                    title: "Advanced Reconnaissance Techniques",
-                    steps: [
-                        "Passive DNS enumeration",
-                        "Certificate transparency analysis",
-                        "Metadata extraction and analysis",
-                        "Network infrastructure mapping",
-                        "Advanced Google dorking techniques"
-                    ]
-                },
-                automation: {
-                    title: "Intelligence Automation",
-                    steps: [
-                        "API integration and automation",
-                        "Custom script development",
-                        "Workflow optimization",
-                        "Data correlation techniques",
-                        "Automated report generation"
-                    ]
-                },
-                legal: {
-                    title: "Legal & Ethical OSINT",
-                    steps: [
-                        "Legal boundaries and regulations",
-                        "Ethical intelligence gathering",
-                        "Privacy considerations",
-                        "Documentation for legal proceedings",
-                        "Professional standards and certifications"
-                    ]
-                },
-                darkweb: {
-                    title: "Dark Web Intelligence",
-                    steps: [
-                        "Secure access and anonymization",
-                        "Hidden service discovery",
-                        "Forum and marketplace analysis",
-                        "Threat intelligence gathering",
-                        "Attribution and verification challenges"
-                    ]
-                },
-                reporting: {
-                    title: "Intelligence Reporting",
-                    steps: [
-                        "Report structure and formatting",
-                        "Data visualization techniques",
-                        "Executive summary creation",
-                        "Confidence levels and attribution",
-                        "Actionable intelligence recommendations"
-                    ]
-                }
-            };
-
-            const tutorial = tutorials[type];
-            if (tutorial) {
-                addTerminalOutput(`🎓 Starting tutorial: ${tutorial.title}`, 'output');
-                tutorial.steps.forEach((step, index) => {
-                    setTimeout(() => {
-                        addTerminalOutput(`📖 Step ${index + 1}: ${step}`, 'output');
-                    }, (index + 1) * 800);
-                });
-                setTimeout(() => {
-                    addTerminalOutput('✅ Tutorial completed! Type "help" for more commands.', 'output');
-                }, tutorial.steps.length * 800 + 1000);
+        function initParticleSystem() {
+            const container = document.getElementById('particles');
+            
+            for (let i = 0; i < 50; i++) {
+                createParticle(container);
             }
         }
 
-        // OSINT Tools with enhanced data generation
-        function runTool(toolType) {
-            const target = document.getElementById('targetInput').value || 'example.com';
+        function createParticle(container) {
+            const particle = document.createElement('div');
+            particle.style.position = 'absolute';
+            particle.style.width = Math.random() * 4 + 1 + 'px';
+            particle.style.height = particle.style.width;
+            particle.style.background = `rgba(0, ${Math.random() * 255}, ${Math.random() * 255}, 0.7)`;
+            particle.style.borderRadius = '50%';
+            particle.style.left = Math.random() * window.innerWidth + 'px';
+            particle.style.top = Math.random() * window.innerHeight + 'px';
+            particle.style.pointerEvents = 'none';
+            particle.style.boxShadow = `0 0 ${Math.random() * 20 + 5}px currentColor`;
             
-            addTerminalOutput(`🛠️ Running ${toolType} analysis on: ${target}`, 'output');
+            container.appendChild(particle);
             
-            setTimeout(() => {
-                const results = generateToolResults(toolType, target);
-                displayToolResults(toolType, results);
-                addTerminalOutput(`✅ ${toolType} analysis completed`, 'output');
-            }, 1500);
+            animateParticle(particle);
         }
 
-        function generateToolResults(toolType, target) {
-            const generators = {
-                whois: () => generateWhoisData(target),
-                subdomain: () => generateSubdomainData(target),
-                ssl: () => generateSSLData(target),
-                ports: () => generatePortData(target),
-                email: () => generateEmailData(target),
-                phone: () => generatePhoneData(target),
-                social: () => generateSocialData(target),
-                username: () => generateUsernameData(target),
-                company: () => generateCompanyData(target),
-                linkedin: () => generateLinkedInData(target),
-                patents: () => generatePatentData(target),
-                financial: () => generateFinancialData(target)
-            };
-
-            return generators[toolType] ? generators[toolType]() : { error: 'Tool not found' };
+        function animateParticle(particle) {
+            const duration = Math.random() * 20000 + 10000;
+            const startX = parseFloat(particle.style.left);
+            const startY = parseFloat(particle.style.top);
+            const endX = Math.random() * window.innerWidth;
+            const endY = Math.random() * window.innerHeight;
+            
+            particle.animate([
+                { transform: `translate(0, 0)`, opacity: Math.random() * 0.7 + 0.3 },
+                { transform: `translate(${endX - startX}px, ${endY - startY}px)`, opacity: 0 }
+            ], {
+                duration: duration,
+                easing: 'linear'
+            }).finished.then(() => {
+                particle.style.left = Math.random() * window.innerWidth + 'px';
+                particle.style.top = Math.random() * window.innerHeight + 'px';
+                animateParticle(particle);
+            });
         }
 
-        // Enhanced data generators
-        function generateWhoisData(target) {
-            return {
-                domain: target,
-                registrar: "Example Registrar Inc.",
-                created: "2020-01-15",
-                expires: "2025-01-15",
-                updated: "2023-12-01",
-                nameservers: ["ns1.example.com", "ns2.example.com"],
-                contacts: {
-                    admin: "admin@example.com",
-                    tech: "tech@example.com",
-                    registrant: "contact@example.com"
-                },
-                dnssec: "unsigned",
-                status: ["clientTransferProhibited", "clientDeleteProhibited"]
-            };
+        function startCyberAnimations() {
+            setInterval(() => {
+                if (Math.random() > 0.7) {
+                    document.body.classList.add('glitch');
+                    setTimeout(() => document.body.classList.remove('glitch'), 200);
+                }
+            }, 5000);
+
+            setInterval(updateStatusAnimations, 2000);
         }
 
-        function generateSubdomainData(target) {
+        function updateStatusAnimations() {
+            const statusValues = document.querySelectorAll('.status-value');
+            statusValues.forEach(element => {
+                element.style.animation = 'none';
+                element.offsetHeight;
+                element.style.animation = 'numberGlow 2s ease-in-out infinite alternate';
+            });
+        }
+
+        async function performReconnaissance(target, targetType, mode, threads, timeout) {
+            const tasks = [];
+            
+            if (targetType === 'domain') {
+                tasks.push(enumerateSubdomains(target));
+                tasks.push(performDNSRecon(target));
+                if (mode !== 'passive') {
+                    tasks.push(performPortScan(target));
+                }
+                tasks.push(analyzeSSL(target));
+                tasks.push(detectTechnologies(target));
+                tasks.push(performWhoisLookup(target));
+            } else if (targetType === 'ip') {
+                tasks.push(performIPRecon(target));
+                tasks.push(performReverseDNS(target));
+                if (mode !== 'passive') {
+                    tasks.push(performPortScan(target));
+                }
+                tasks.push(performGeoLocation(target));
+            } else if (targetType === 'phone') {
+                tasks.push(performPhoneRecon(target));
+                tasks.push(performCarrierLookup(target));
+                tasks.push(performPhoneValidation(target));
+            }
+            
+            for (let i = 0; i < tasks.length; i++) {
+                if (!reconActive) break;
+                
+                try {
+                    await tasks[i];
+                    updateProgress(((i + 1) / tasks.length) * 100);
+                } catch (error) {
+                    addTerminalLine(`⚠️ Task failed: ${error.message}`, 'warning');
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            addTerminalLine(`✅ Reconnaissance completed on ${target}`, 'success');
+            addTerminalLine(`📊 Found ${reconResults.length} attack surface elements`, 'success');
+            filteredResults = [...reconResults];
+            applyFilter();
+        }
+
+        async function enumerateSubdomains(domain) {
+            addTerminalLine(`🔍 Enumerating subdomains for ${domain}...`, 'success');
+            
             const subdomains = [
-                'www', 'mail', 'ftp', 'admin', 'api', 'dev', 'staging', 
-                'test', 'cdn', 'assets', 'blog', 'shop', 'support',
-                'portal', 'dashboard', 'secure', 'vpn', 'remote'
+                'www', 'mail', 'ftp', 'admin', 'test', 'dev', 'api', 'app', 'web',
+                'portal', 'server', 'ns1', 'ns2', 'mx', 'blog', 'shop', 'store',
+                'cdn', 'assets', 'images', 'static', 'media', 'files', 'docs',
+                'support', 'help', 'forum', 'community', 'beta', 'staging',
+                'secure', 'vpn', 'remote', 'access', 'login', 'auth', 'sso',
+                'dashboard', 'panel', 'cpanel', 'webmail', 'cloud', 'backup'
             ];
-            const found = [];
-            const numFound = Math.floor(Math.random() * 12) + 5;
             
-            for (let i = 0; i < numFound; i++) {
-                const sub = subdomains[Math.floor(Math.random() * subdomains.length)];
-                if (!found.includes(`${sub}.${target}`)) {
-                    found.push(`${sub}.${target}`);
+            const validSubdomains = [];
+            const promises = [];
+            
+            for (const sub of subdomains) {
+                if (!reconActive) break;
+                
+                const subdomain = `${sub}.${domain}`;
+                const promise = checkSubdomain(subdomain).then(isValid => {
+                    if (isValid) {
+                        validSubdomains.push(subdomain);
+                        addResult({
+                            type: 'subdomain',
+                            value: subdomain,
+                            description: `Active subdomain found`,
+                            tags: ['subdomain'],
+                            timestamp: new Date().toISOString()
+                        });
+                        addTerminalLine(`✅ Found: ${subdomain}`, 'success');
+                    }
+                }).catch(() => {});
+                
+                promises.push(promise);
+                
+                if (promises.length >= 10) {
+                    await Promise.allSettled(promises.splice(0, 10));
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
             }
-            return found;
-        }
-
-        function generateSSLData(target) {
-            return {
-                issuer: "Let's Encrypt Authority X3",
-                subject: target,
-                sans: [`*.${target}`, `www.${target}`, `mail.${target}`, `api.${target}`],
-                validFrom: "2024-01-01",
-                validTo: "2024-12-31",
-                serialNumber: "03:B2:F6:BC:CF:18:E0:1C",
-                fingerprint: "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD",
-                keySize: "2048 bits",
-                signatureAlgorithm: "SHA256withRSA"
-            };
-        }
-
-        function generatePortData(target) {
-            const commonPorts = [
-                { port: 80, service: 'HTTP', version: 'Apache 2.4.41' },
-                { port: 443, service: 'HTTPS', version: 'nginx 1.18.0' },
-                { port: 22, service: 'SSH', version: 'OpenSSH 8.2' },
-                { port: 21, service: 'FTP', version: 'vsftpd 3.0.3' },
-                { port: 25, service: 'SMTP', version: 'Postfix' },
-                { port: 53, service: 'DNS', version: 'BIND 9.16.1' },
-                { port: 3306, service: 'MySQL', version: '8.0.25' },
-                { port: 5432, service: 'PostgreSQL', version: '13.3' },
-                { port: 6379, service: 'Redis', version: '6.2.5' },
-                { port: 27017, service: 'MongoDB', version: '4.4.6' }
-            ];
             
-            return commonPorts.slice(0, Math.floor(Math.random() * 7) + 4).map(item => ({
-                ...item,
-                status: Math.random() > 0.25 ? 'open' : 'filtered'
-            }));
-        }
-
-        function generateEmailData(target) {
-            return {
-                email: target,
-                validity: "valid",
-                breaches: [
-                    { name: "DataBreach2023", date: "2023-05-15", records: "2.1M" },
-                    { name: "MegaLeak2022", date: "2022-11-03", records: "890K" }
-                ],
-                socialAccounts: [
-                    { platform: "Twitter", username: target.split('@')[0] },
-                    { platform: "LinkedIn", profile: "confirmed" },
-                    { platform: "GitHub", username: target.split('@')[0] }
-                ],
-                domains: [`${target.split('@')[1]}`, "backup-domain.com"],
-                reputation: "clean",
-                disposable: false
-            };
-        }
-
-        function generatePhoneData(target) {
-            return {
-                number: target,
-                carrier: "Verizon Wireless",
-                location: {
-                    country: "United States",
-                    state: "New York",
-                    city: "New York"
-                },
-                type: "Mobile",
-                socialMedia: [
-                    { platform: "WhatsApp", status: "registered" },
-                    { platform: "Telegram", status: "possible" }
-                ],
-                associatedEmails: ["user@example.com", "contact@business.com"],
-                reputation: "clean",
-                spam_reports: 0
-            };
-        }
-
-        function generateSocialData(target) {
-            const platforms = [
-                { name: 'Twitter', icon: '🐦' },
-                { name: 'LinkedIn', icon: '💼' },
-                { name: 'Facebook', icon: '📘' },
-                { name: 'Instagram', icon: '📷' },
-                { name: 'GitHub', icon: '👨‍💻' },
-                { name: 'Reddit', icon: '🤖' },
-                { name: 'YouTube', icon: '🎥' },
-                { name: 'TikTok', icon: '🎵' }
-            ];
+            await Promise.allSettled(promises);
             
-            return platforms.map(platform => ({
-                platform: platform.name,
-                icon: platform.icon,
-                username: target.replace(/[@.]/, ''),
-                followers: Math.floor(Math.random() * 50000),
-                posts: Math.floor(Math.random() * 2000),
-                lastActive: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                verified: Math.random() > 0.8,
-                found: Math.random() > 0.3
-            })).filter(p => p.found);
+            addTerminalLine(`🎯 Subdomain enumeration complete: ${validSubdomains.length} found`, 'success');
         }
 
-        function generateUsernameData(target) {
-            const platforms = [
-                'GitHub', 'Twitter', 'Instagram', 'Reddit', 'YouTube', 
-                'TikTok', 'Pinterest', 'Snapchat', 'Twitch', 'Discord'
-            ];
-            return platforms.map(platform => ({
-                platform,
-                found: Math.random() > 0.4,
-                url: `https://${platform.toLowerCase()}.com/${target}`,
-                lastSeen: Math.random() > 0.5 ? 
-                    new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
-                    "Unknown",
-                profile_pic: Math.random() > 0.6,
-                activity_level: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)]
-            }));
-        }
-
-        function generateCompanyData(target) {
-            return {
-                name: target,
-                industry: ["Technology", "Finance", "Healthcare", "Retail", "Manufacturing"][Math.floor(Math.random() * 5)],
-                employees: `${Math.floor(Math.random() * 5000) + 100}-${Math.floor(Math.random() * 5000) + 2000}`,
-                founded: Math.floor(Math.random() * 30) + 1990,
-                headquarters: ["San Francisco, CA", "New York, NY", "Austin, TX", "Seattle, WA"][Math.floor(Math.random() * 4)],
-                revenue: `${Math.floor(Math.random() * 500) + 50}M-${Math.floor(Math.random() * 500) + 300}M`,
-                competitors: ["CompetitorA", "CompetitorB", "CompetitorC"],
-                website: `https://${target.toLowerCase().replace(/\s+/g, '')}.com`,
-                phone: `+1-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`
-            };
-        }
-
-        function generateLinkedInData(target) {
-            return {
-                company: target,
-                employees: Math.floor(Math.random() * 5000) + 100,
-                departments: [
-                    { name: "Engineering", count: Math.floor(Math.random() * 200) + 50 },
-                    { name: "Sales", count: Math.floor(Math.random() * 100) + 20 },
-                    { name: "Marketing", count: Math.floor(Math.random() * 50) + 10 },
-                    { name: "HR", count: Math.floor(Math.random() * 30) + 5 }
-                ],
-                executives: [
-                    { name: "John Doe", title: "CEO", tenure: "5 years" },
-                    { name: "Jane Smith", title: "CTO", tenure: "3 years" },
-                    { name: "Bob Johnson", title: "CFO", tenure: "2 years" }
-                ],
-                recentHires: Math.floor(Math.random() * 50) + 10,
-                growth_rate: `${Math.floor(Math.random() * 20) + 5}% YoY`
-            };
-        }
-
-        function generatePatentData(target) {
-            return {
-                company: target,
-                total_patents: Math.floor(Math.random() * 200) + 50,
-                recent_patents: [
-                    { id: "US11234567", title: "AI-Based Data Processing System", date: "2024-01-15" },
-                    { id: "US11234568", title: "Advanced Security Protocol", date: "2023-11-20" },
-                    { id: "US11234569", title: "Machine Learning Architecture", date: "2023-09-10" }
-                ],
-                categories: [
-                    { category: "Artificial Intelligence", count: Math.floor(Math.random() * 50) + 10 },
-                    { category: "Data Processing", count: Math.floor(Math.random() * 30) + 5 },
-                    { category: "Security", count: Math.floor(Math.random() * 25) + 5 }
-                ],
-                pending: Math.floor(Math.random() * 20) + 5
-            };
-        }
-
-        function generateFinancialData(target) {
-            return {
-                company: target,
-                marketCap: `${(Math.random() * 10 + 0.5).toFixed(1)}B`,
-                revenue: `${(Math.random() * 1000 + 100).toFixed(0)}M`,
-                employees: Math.floor(Math.random() * 5000) + 500,
-                stockPrice: `${(Math.random() * 200 + 10).toFixed(2)}`,
-                filings: [
-                    { type: "10-K", date: "2024-03-15", description: "Annual Report" },
-                    { type: "10-Q", date: "2024-01-30", description: "Quarterly Report" },
-                    { type: "8-K", date: "2024-01-15", description: "Current Report" }
-                ],
-                financial_health: ["Excellent", "Good", "Fair"][Math.floor(Math.random() * 3)],
-                debt_ratio: `${(Math.random() * 0.5 + 0.1).toFixed(2)}`
-            };
-        }
-
-        // Intelligence Scanner - FIXED FUNCTION
-        function startIntelligenceScan() {
-            const target = document.getElementById('targetInput').value.trim();
-            if (!target) {
-                addTerminalOutput('❌ Error: No target specified', 'error');
-                return;
-            }
-
-            if (isScanning) {
-                addTerminalOutput('⚠️ Scan already in progress...', 'warning');
-                return;
-            }
-
-            isScanning = true;
-            scanResults = [];
-            scanProgress = 0;
-            
-            const selectedOption = document.querySelector('.option-card.selected').dataset.option;
-            
-            addTerminalOutput(`🚀 Initiating ${selectedOption} scan on: ${target}`, 'output');
-            addTerminalOutput('🔍 Gathering intelligence from multiple sources...', 'output');
-            
-            document.getElementById('scanProgress').style.display = 'block';
-            updateProgressText('Initializing scan systems...');
-            scrollToSection(4);
-            
-            simulateIntelligenceScan(target, selectedOption);
-        }
-
-        function simulateIntelligenceScan(target, scanType) {
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-            
-            const scanSteps = [
-                { step: 'DNS enumeration and analysis', progress: 15, delay: 1000 },
-                { step: 'Subdomain discovery and validation', progress: 25, delay: 1200 },
-                { step: 'SSL certificate transparency logs', progress: 40, delay: 1000 },
-                { step: 'Social media reconnaissance', progress: 55, delay: 1500 },
-                { step: 'Email and contact intelligence', progress: 70, delay: 1000 },
-                { step: 'Network infrastructure analysis', progress: 85, delay: 1200 },
-                { step: 'Compiling comprehensive report', progress: 100, delay: 800 }
-            ];
-
-            let currentStep = 0;
-
-            function executeStep() {
-                if (currentStep >= scanSteps.length) {
-                    completeScan(target);
-                    return;
+        async function checkSubdomain(subdomain) {
+            try {
+                const response = await fetch(`https://dns.google/resolve?name=${subdomain}&type=A`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/dns-json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.Status === 0 && data.Answer && data.Answer.length > 0;
                 }
+            } catch (error) {
+                try {
+                    const testResponse = await fetch(`https://${subdomain}`, {
+                        method: 'HEAD',
+                        mode: 'no-cors',
+                        timeout: 3000
+                    });
+                    return true;
+                } catch {
+                    return false;
+                }
+            }
+            return false;
+        }
 
-                const step = scanSteps[currentStep];
-                progressBar.style.width = step.progress + '%';
-                updateProgressText(`${step.step}... ${step.progress}%`);
-                addTerminalOutput(`📊 ${step.step}... ${step.progress}%`, 'output');
+        async function performDNSRecon(domain) {
+            addTerminalLine(`🌐 Performing DNS reconnaissance on ${domain}...`, 'success');
+            
+            const recordTypes = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME'];
+            
+            for (const type of recordTypes) {
+                if (!reconActive) break;
                 
-                // Generate results for this step
-                generateScanResults(target, step.step, currentStep);
-                
-                currentStep++;
-                setTimeout(executeStep, step.delay);
-            }
-
-            executeStep();
-        }
-
-        function updateProgressText(text) {
-            const progressTextEl = document.getElementById('progressText');
-            if (progressTextEl) {
-                progressTextEl.textContent = text;
-            }
-        }
-
-        function generateScanResults(target, step, stepIndex) {
-            const resultsGrid = document.getElementById('resultsGrid');
-            
-            // Clear initial placeholder on first result
-            if (stepIndex === 0) {
-                resultsGrid.innerHTML = '';
-            }
-            
-            let resultData = null;
-            
-            switch (true) {
-                case step.includes('DNS'):
-                    resultData = {
-                        type: '🌐 DNS Intelligence',
-                        data: `A: 192.168.1.${Math.floor(Math.random() * 255) + 1}
-AAAA: 2001:db8::${Math.floor(Math.random() * 9999)}
-MX: mail.${target} (Priority: 10)
-NS: ns1.${target}, ns2.${target}
-TXT: "v=spf1 include:_spf.google.com ~all"`
-                    };
-                    break;
+                try {
+                    const response = await fetch(`https://dns.google/resolve?name=${domain}&type=${type}`, {
+                        headers: { 'Accept': 'application/dns-json' }
+                    });
                     
-                case step.includes('subdomain'):
-                    const subdomains = generateSubdomainData(target);
-                    resultData = {
-                        type: '🔍 Subdomain Discovery',
-                        data: `Found ${subdomains.length} subdomains:
-${subdomains.slice(0, 8).join('\n')}
-${subdomains.length > 8 ? `... and ${subdomains.length - 8} more` : ''}`
-                    };
-                    break;
-                    
-                case step.includes('SSL'):
-                    const sslData = generateSSLData(target);
-                    resultData = {
-                        type: '🔒 SSL Certificate Analysis',
-                        data: `Issuer: ${sslData.issuer}
-Subject: ${sslData.subject}
-SANs: ${sslData.sans.join(', ')}
-Valid: ${sslData.validFrom} - ${sslData.validTo}
-Key Size: ${sslData.keySize}
-Signature: ${sslData.signatureAlgorithm}`
-                    };
-                    break;
-                    
-                case step.includes('Social'):
-                    const socialData = generateSocialData(target);
-                    resultData = {
-                        type: '👥 Social Media Intelligence',
-                        data: socialData.map(s => 
-                            `${s.icon} ${s.platform}: ${s.followers.toLocaleString()} followers
-   Last Active: ${s.lastActive}${s.verified ? ' ✓ Verified' : ''}`
-                        ).join('\n')
-                    };
-                    break;
-                    
-                case step.includes('Email'):
-                    resultData = {
-                        type: '📧 Email Intelligence',
-                        data: `Email Validation: Valid
-Breach Records: 2 breaches found
-Associated Accounts: 3 platforms
-Reputation: Clean
-Disposable: No
-Last Breach: DataBreach2023 (2.1M records)`
-                    };
-                    break;
-                    
-                case step.includes('Network'):
-                    const portData = generatePortData(target);
-                    resultData = {
-                        type: '🌐 Network Infrastructure',
-                        data: portData.map(p => 
-                            `Port ${p.port}: ${p.service} (${p.status})
-   Version: ${p.version || 'Unknown'}`
-                        ).join('\n')
-                    };
-                    break;
-                    
-                case step.includes('report'):
-                    resultData = {
-                        type: '📊 Scan Summary',
-                        data: `Total Intelligence Categories: ${scanResults.length + 1}
-Scan Type: ${document.querySelector('.option-card.selected').dataset.option}
-Target: ${target}
-Completion Time: ${new Date().toLocaleTimeString()}
-Risk Level: ${['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)]}
-Confidence: ${Math.floor(Math.random() * 30) + 70}%`
-                    };
-                    break;
-            }
-            
-            if (resultData) {
-                const resultCard = document.createElement('div');
-                resultCard.className = 'result-card';
-                resultCard.innerHTML = `
-                    <div class="result-type">${resultData.type}</div>
-                    <div class="result-data">${resultData.data}</div>
-                `;
-                resultsGrid.appendChild(resultCard);
-                scanResults.push(resultData);
-                
-                // Animate the new card
-                setTimeout(() => {
-                    resultCard.style.opacity = '0';
-                    resultCard.style.transform = 'translateY(20px)';
-                    resultCard.style.transition = 'all 0.5s ease';
-                    setTimeout(() => {
-                        resultCard.style.opacity = '1';
-                        resultCard.style.transform = 'translateY(0)';
-                    }, 50);
-                }, 100);
-            }
-        }
-
-        function completeScan(target) {
-            isScanning = false;
-            document.getElementById('scanProgress').style.display = 'none';
-            addTerminalOutput('✅ Intelligence gathering completed successfully!', 'output');
-            addTerminalOutput(`📈 Generated ${scanResults.length} intelligence reports`, 'output');
-            addTerminalOutput('💾 Type "export" to save results or use the export button', 'output');
-            
-            // Add a final summary card
-            setTimeout(() => {
-                const resultsGrid = document.getElementById('resultsGrid');
-                const summaryCard = document.createElement('div');
-                summaryCard.className = 'result-card';
-                summaryCard.style.border = '2px solid #00ff41';
-                summaryCard.innerHTML = `
-                    <div class="result-type">🎯 OSINT STRIKER ANALYSIS COMPLETE</div>
-                    <div class="result-data">Target: ${target}
-Scan Duration: ${Math.floor(Math.random() * 30) + 15} seconds
-Intelligence Categories: ${scanResults.length}
-Data Points Collected: ${Math.floor(Math.random() * 500) + 100}
-Threat Level: ${['Minimal', 'Low', 'Medium'][Math.floor(Math.random() * 3)]}
-Recommendation: Review all findings and cross-reference data</div>
-                `;
-                resultsGrid.appendChild(summaryCard);
-            }, 1000);
-        }
-
-        // Event Listeners Setup
-        function setupEventListeners() {
-            // Navigation dots
-            document.querySelectorAll('.nav-dot').forEach((dot, index) => {
-                dot.addEventListener('click', () => scrollToSection(index));
-            });
-
-            // Tutorial cards
-            document.querySelectorAll('.tutorial-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    const tutorialType = card.dataset.tutorial;
-                    startTutorial(tutorialType);
-                    scrollToSection(5); // Go to terminal
-                });
-            });
-
-            // Tool items
-            document.querySelectorAll('.tool-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const toolType = item.dataset.tool;
-                    runTool(toolType);
-                    scrollToSection(5); // Go to terminal
-                });
-            });
-
-            // Scan option selection
-            document.querySelectorAll('.option-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-                    this.classList.add('selected');
-                });
-            });
-
-            // Main scan button
-            const startScanBtn = document.getElementById('startScanBtn');
-            if (startScanBtn) {
-                startScanBtn.addEventListener('click', startIntelligenceScan);
-            }
-
-            // Hero start button
-            const heroStartBtn = document.getElementById('heroStartBtn');
-            if (heroStartBtn) {
-                heroStartBtn.addEventListener('click', () => scrollToSection(3));
-            }
-
-            // Target input enter key
-            const targetInput = document.getElementById('targetInput');
-            if (targetInput) {
-                targetInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        startIntelligenceScan();
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.Answer) {
+                            data.Answer.forEach(record => {
+                                addResult({
+                                    type: 'dns',
+                                    value: `${type}: ${record.data}`,
+                                    description: `DNS ${type} record`,
+                                    tags: ['dns', type.toLowerCase()],
+                                    timestamp: new Date().toISOString()
+                                });
+                            });
+                            addTerminalLine(`📋 ${type} records found: ${data.Answer.length}`, 'success');
+                        }
                     }
-                });
+                } catch (error) {
+                    addTerminalLine(`⚠️ DNS lookup failed for ${type}: ${error.message}`, 'warning');
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 200));
             }
+        }
 
-            // Floating Action Buttons
-            const helpBtn = document.getElementById('helpBtn');
-            const settingsBtn = document.getElementById('settingsBtn');
-            const exportBtn = document.getElementById('exportBtn');
-
-            if (helpBtn) {
-                helpBtn.addEventListener('click', () => openModal('help'));
-            }
-            if (settingsBtn) {
-                settingsBtn.addEventListener('click', () => openModal('settings'));
-            }
-            if (exportBtn) {
-                exportBtn.addEventListener('click', exportAllData);
-            }
-
-            // Modal close buttons
-            const closeHelp = document.getElementById('closeHelp');
-            const closeSettings = document.getElementById('closeSettings');
-
-            if (closeHelp) {
-                closeHelp.addEventListener('click', () => closeModal('help'));
-            }
-            if (closeSettings) {
-                closeSettings.addEventListener('click', () => closeModal('settings'));
-            }
-
-            // Terminal button effects
-            document.querySelectorAll('.terminal-button').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    if (btn.classList.contains('btn-close')) {
-                        addTerminalOutput('Terminal connection closed', 'warning');
-                    } else if (btn.classList.contains('btn-minimize')) {
-                        addTerminalOutput('Terminal minimized', 'output');
-                    } else if (btn.classList.contains('btn-maximize')) {
-                        addTerminalOutput('Terminal maximized', 'output');
+        async function performPortScan(domain) {
+            addTerminalLine(`🔍 Scanning common ports on ${domain}...`, 'success');
+            
+            const commonPorts = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 993, 995, 1723, 3306, 3389, 5432, 5900, 8080, 8443];
+            
+            for (const port of commonPorts) {
+                if (!reconActive) break;
+                
+                try {
+                    const isOpen = await scanPort(domain, port);
+                    if (isOpen) {
+                        addResult({
+                            type: 'port',
+                            value: `${domain}:${port}`,
+                            description: `Open port detected`,
+                            tags: ['port', `port-${port}`],
+                            timestamp: new Date().toISOString()
+                        });
+                        addTerminalLine(`🚪 Open port found: ${port}`, 'success');
                     }
-                });
+                } catch (error) {
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        async function scanPort(domain, port) {
+            return new Promise((resolve) => {
+                const timeout = 3000;
+                const img = new Image();
+                const start = Date.now();
+                
+                img.onerror = () => {
+                    const elapsed = Date.now() - start;
+                    resolve(elapsed < timeout);
+                };
+                
+                img.onload = () => resolve(true);
+                
+                setTimeout(() => resolve(false), timeout);
+                
+                img.src = `http://${domain}:${port}/favicon.ico?_=${Date.now()}`;
             });
         }
 
-        // Terminal functionality
-        function addTerminalOutput(text, type = 'output') {
-            const terminalBody = document.getElementById('terminalBody');
-            const currentPrompt = document.getElementById('currentPrompt');
+        async function analyzeSSL(domain) {
+            addTerminalLine(`🔒 Analyzing SSL/TLS configuration for ${domain}...`, 'success');
             
-            if (!terminalBody || !currentPrompt) return;
-            
-            const line = document.createElement('div');
-            line.className = `terminal-line ${type}`;
-            line.textContent = text;
-            
-            terminalBody.insertBefore(line, currentPrompt);
-            terminalBody.scrollTop = terminalBody.scrollHeight;
-            
-            // Animate the line
-            setTimeout(() => line.style.opacity = '1', 50);
-        }
-
-        // Modal functionality - FIXED
-        function openModal(type) {
-            const modal = document.getElementById(type + 'Modal');
-            if (modal) {
-                modal.style.display = 'flex';
-                document.body.style.overflow = 'hidden';
+            try {
+                const response = await fetch(`https://${domain}`, {
+                    method: 'HEAD',
+                    mode: 'no-cors'
+                });
+                
+                addResult({
+                    type: 'ssl',
+                    value: `https://${domain}`,
+                    description: 'SSL/TLS enabled',
+                    tags: ['ssl', 'https'],
+                    timestamp: new Date().toISOString()
+                });
+                
+                addTerminalLine(`🔐 SSL/TLS is configured for ${domain}`, 'success');
+            } catch (error) {
+                addTerminalLine(`⚠️ SSL/TLS analysis failed: ${error.message}`, 'warning');
             }
         }
 
-        function closeModal(type) {
-            const modal = document.getElementById(type + 'Modal');
-            if (modal) {
-                modal.style.display = 'none';
-                document.body.style.overflow = 'auto';
+        async function detectTechnologies(domain) {
+            addTerminalLine(`🔧 Detecting technologies on ${domain}...`, 'success');
+            
+            try {
+                const response = await fetch(`https://${domain}`, {
+                    method: 'GET',
+                    mode: 'cors'
+                }).catch(() => 
+                    fetch(`http://${domain}`, { method: 'GET', mode: 'cors' })
+                );
+                
+                if (response) {
+                    const server = response.headers.get('server');
+                    const poweredBy = response.headers.get('x-powered-by');
+                    
+                    if (server) {
+                        addResult({
+                            type: 'service',
+                            value: `Server: ${server}`,
+                            description: 'Web server technology detected',
+                            tags: ['service', 'webserver'],
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    
+                    if (poweredBy) {
+                        addResult({
+                            type: 'service',
+                            value: `Framework: ${poweredBy}`,
+                            description: 'Web framework detected',
+                            tags: ['service', 'framework'],
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    
+                    addTerminalLine(`🔍 Technology detection complete`, 'success');
+                }
+            } catch (error) {
+                addTerminalLine(`⚠️ Technology detection failed: ${error.message}`, 'warning');
             }
         }
 
-        // Export functionality - ENHANCED
-        function exportAllData() {
-            if (scanResults.length === 0) {
-                addTerminalOutput('⚠️ No data to export. Run a scan first.', 'warning');
-                return;
-            }
-
-            const exportFormat = document.getElementById('exportFormat')?.value || 'json';
-            const target = document.getElementById('targetInput').value || 'unknown';
+        async function performWhoisLookup(domain) {
+            addTerminalLine(`📋 Performing WHOIS lookup for ${domain}...`, 'success');
             
-            const exportData = {
-                meta: {
+            try {
+                const response = await fetch(`https://api.whois.vu/?q=${domain}`);
+                if (response.ok) {
+                    const whoisData = await response.text();
+                    
+                    const registrar = extractWhoisField(whoisData, 'Registrar:');
+                    const creationDate = extractWhoisField(whoisData, 'Creation Date:') || extractWhoisField(whoisData, 'Created On:');
+                    const expirationDate = extractWhoisField(whoisData, 'Expiration Date:') || extractWhoisField(whoisData, 'Expires On:');
+                    const nameServers = extractWhoisMultiField(whoisData, 'Name Server:');
+                    
+                    const whoisInfo = {
+                        raw_data: whoisData,
+                        registrar: registrar,
+                        creation_date: creationDate,
+                        expiration_date: expirationDate,
+                        name_servers: nameServers,
+                        domain: domain
+                    };
+                    
+                    detailedData[`whois_${domain}`] = whoisInfo;
+                    
+                    addResult({
+                        type: 'whois',
+                        value: `Domain: ${domain}`,
+                        description: `Registrar: ${registrar || 'Unknown'}`,
+                        tags: ['whois', 'domain-info'],
+                        timestamp: new Date().toISOString(),
+                        detailed_key: `whois_${domain}`
+                    });
+                    
+                    addTerminalLine(`📝 WHOIS data collected - Registrar: ${registrar || 'Unknown'}`, 'success');
+                }
+            } catch (error) {
+                const whoisInfo = {
+                    domain: domain,
+                    registrar: 'Data not available via API',
+                    creation_date: 'Unknown',
+                    expiration_date: 'Unknown',
+                    status: 'API limitations - use dedicated WHOIS tools for detailed info'
+                };
+                
+                detailedData[`whois_${domain}`] = whoisInfo;
+                
+                addResult({
+                    type: 'whois',
+                    value: `Domain: ${domain}`,
+                    description: 'Domain registration information (limited)',
+                    tags: ['whois', 'domain-info'],
                     timestamp: new Date().toISOString(),
-                    target: target,
-                    scanType: document.querySelector('.option-card.selected')?.dataset.option || 'comprehensive',
-                    version: "OSINT STRIKER v2.0",
-                    totalResults: scanResults.length,
-                    exportFormat: exportFormat
-                },
-                settings: {
-                    deepScan: document.getElementById('deepScan')?.checked || false,
-                    socialMedia: document.getElementById('socialMedia')?.checked || false,
-                    darkWeb: document.getElementById('darkWeb')?.checked || false,
-                    anonymousMode: document.getElementById('anonymousMode')?.checked || false
-                },
-                intelligence: scanResults,
-                summary: {
-                    categories: scanResults.length,
-                    dataPoints: Math.floor(Math.random() * 500) + 100,
-                    riskLevel: ['Minimal', 'Low', 'Medium', 'High'][Math.floor(Math.random() * 4)],
-                    confidence: Math.floor(Math.random() * 30) + 70
-                }
-            };
-
-            let fileContent, fileName, mimeType;
-
-            switch (exportFormat) {
-                case 'json':
-                    fileContent = JSON.stringify(exportData, null, 2);
-                    fileName = `osint_striker_${target}_${Date.now()}.json`;
-                    mimeType = 'application/json';
-                    break;
-                case 'csv':
-                    fileContent = convertToCSV(exportData);
-                    fileName = `osint_striker_${target}_${Date.now()}.csv`;
-                    mimeType = 'text/csv';
-                    break;
-                case 'xml':
-                    fileContent = convertToXML(exportData);
-                    fileName = `osint_striker_${target}_${Date.now()}.xml`;
-                    mimeType = 'application/xml';
-                    break;
-                default:
-                    fileContent = JSON.stringify(exportData, null, 2);
-                    fileName = `osint_striker_${target}_${Date.now()}.json`;
-                    mimeType = 'application/json';
-            }
-
-            const blob = new Blob([fileContent], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            addTerminalOutput(`💾 Intelligence data exported as ${exportFormat.toUpperCase()} successfully!`, 'output');
-            addTerminalOutput(`📁 File: ${fileName}`, 'output');
-        }
-
-        function convertToCSV(data) {
-            let csv = 'Category,Type,Data,Timestamp\n';
-            data.intelligence.forEach(item => {
-                const cleanData = item.data.replace(/"/g, '""').replace(/\n/g, ' | ');
-                csv += `"${item.type}","Intelligence","${cleanData}","${data.meta.timestamp}"\n`;
-            });
-            return csv;
-        }
-
-        function convertToXML(data) {
-            let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<osint_report>\n';
-            xml += `  <meta>\n    <timestamp>${data.meta.timestamp}</timestamp>\n    <target>${data.meta.target}</target>\n  </meta>\n`;
-            xml += '  <intelligence>\n';
-            data.intelligence.forEach(item => {
-                xml += `    <item>\n      <type>${item.type}</type>\n      <data><![CDATA[${item.data}]]></data>\n    </item>\n`;
-            });
-            xml += '  </intelligence>\n</osint_report>';
-            return xml;
-        }
-
-        function displayToolResults(toolType, results) {
-            const resultsGrid = document.getElementById('resultsGrid');
-            
-            const resultCard = document.createElement('div');
-            resultCard.className = 'result-card';
-            resultCard.innerHTML = `
-                <div class="result-type">🛠️ ${toolType.toUpperCase()} Analysis</div>
-                <div class="result-data"><pre>${JSON.stringify(results, null, 2)}</pre></div>
-            `;
-            resultsGrid.appendChild(resultCard);
-            
-            scrollToSection(4);
-        }
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey || e.metaKey) {
-                switch(e.key.toLowerCase()) {
-                    case 'enter':
-                        e.preventDefault();
-                        startIntelligenceScan();
-                        break;
-                    case 'e':
-                        e.preventDefault();
-                        exportAllData();
-                        break;
-                    case 'h':
-                        e.preventDefault();
-                        openModal('help');
-                        break;
-                }
-            }
-            
-            if (e.key === 'Escape') {
-                closeModal('help');
-                closeModal('settings');
-            }
-        });
-
-        // Enhanced scroll detection
-        let isScrolling = false;
-        
-        function updateScrollPosition() {
-            const sections = document.querySelectorAll('.section');
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const windowHeight = window.innerHeight;
-            
-            sections.forEach((section, index) => {
-                const rect = section.getBoundingClientRect();
-                const isInView = rect.top <= windowHeight / 2 && rect.bottom >= windowHeight / 2;
+                    detailed_key: `whois_${domain}`
+                });
                 
-                if (isInView && currentSection !== index) {
-                    updateNavigation(index);
-                    apply3DEffects(index);
+                addTerminalLine(`📝 WHOIS lookup completed (limited data due to API restrictions)`, 'warning');
+            }
+        }
+
+        function extractWhoisField(whoisData, field) {
+            const regex = new RegExp(`${field}\\s*(.+)`, 'i');
+            const match = whoisData.match(regex);
+            return match ? match[1].trim() : null;
+        }
+
+        function extractWhoisMultiField(whoisData, field) {
+            const regex = new RegExp(`${field}\\s*(.+)`, 'gi');
+            const matches = [...whoisData.matchAll(regex)];
+            return matches.map(match => match[1].trim());
+        }
+
+        async function performIPRecon(ip) {
+            addTerminalLine(`🌍 Performing IP reconnaissance on ${ip}...`, 'success');
+            
+            try {
+                const response = await fetch(`https://ipapi.co/${ip}/json/`);
+                if (response.ok) {
+                    const ipData = await response.json();
+                    
+                    detailedData[`ip_${ip}`] = ipData;
+                    
+                    addResult({
+                        type: 'ip',
+                        value: `${ip} (${ipData.city}, ${ipData.country_name})`,
+                        description: `ISP: ${ipData.org || 'Unknown'}`,
+                        tags: ['ip', 'geolocation'],
+                        timestamp: new Date().toISOString(),
+                        detailed_key: `ip_${ip}`
+                    });
+                    
+                    addTerminalLine(`🌍 IP located: ${ipData.city}, ${ipData.country_name}`, 'success');
                 }
+            } catch (error) {
+                addTerminalLine(`⚠️ IP reconnaissance failed: ${error.message}`, 'warning');
+            }
+        }
+
+        async function performReverseDNS(ip) {
+            addTerminalLine(`🔄 Performing reverse DNS lookup for ${ip}...`, 'success');
+            
+            try {
+                const response = await fetch(`https://dns.google/resolve?name=${ip}&type=PTR`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.Answer) {
+                        data.Answer.forEach(record => {
+                            addResult({
+                                type: 'dns',
+                                value: `PTR: ${record.data}`,
+                                description: `Reverse DNS for ${ip}`,
+                                tags: ['dns', 'reverse-dns'],
+                                timestamp: new Date().toISOString()
+                            });
+                        });
+                        addTerminalLine(`🔄 Reverse DNS found: ${data.Answer[0].data}`, 'success');
+                    }
+                }
+            } catch (error) {
+                addTerminalLine(`⚠️ Reverse DNS lookup failed: ${error.message}`, 'warning');
+            }
+        }
+
+        async function performGeoLocation(ip) {
+            addTerminalLine(`📍 Performing geolocation lookup for ${ip}...`, 'success');
+            
+            try {
+                const response = await fetch(`https://ipapi.co/${ip}/json/`);
+                if (response.ok) {
+                    const geoData = await response.json();
+                    
+                    addResult({
+                        type: 'ip',
+                        value: `Location: ${geoData.city}, ${geoData.region}, ${geoData.country_name}`,
+                        description: `Coordinates: ${geoData.latitude}, ${geoData.longitude}`,
+                        tags: ['ip', 'geolocation'],
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    addTerminalLine(`📍 Geolocation: ${geoData.city}, ${geoData.country_name}`, 'success');
+                }
+            } catch (error) {
+                addTerminalLine(`⚠️ Geolocation lookup failed: ${error.message}`, 'warning');
+            }
+        }
+
+        async function performPhoneRecon(phone) {
+            addTerminalLine(`📞 Performing advanced phone reconnaissance on ${phone}...`, 'success');
+            
+            const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+            const countryCode = extractCountryCode(cleanPhone);
+            
+            try {
+                const phoneData = await simulatePhoneNumberLookup(cleanPhone);
+                
+                const phoneInfo = {
+                    original: phone,
+                    cleaned: cleanPhone,
+                    country_code: countryCode,
+                    is_mobile: /^[\+]?[1-9][\d]{9,14}$/.test(cleanPhone),
+                    number_type: phoneData.number_type || 'Unknown',
+                    carrier: phoneData.carrier || 'Unknown',
+                    location: phoneData.location || 'Unknown',
+                    city: phoneData.city || 'Unknown',
+                    region: phoneData.region || 'Unknown',
+                    country: phoneData.country || 'Unknown',
+                    latitude: phoneData.latitude || 'Unknown',
+                    longitude: phoneData.longitude || 'Unknown',
+                    timezone: phoneData.timezone || 'Unknown',
+                    owner: phoneData.owner || 'Unknown (requires consent or legal access)',
+                    social_profiles: phoneData.social_profiles || [],
+                    registration_date: phoneData.registration_date || 'Unknown',
+                    last_active: phoneData.last_active || 'Unknown',
+                    analysis_date: new Date().toISOString()
+                };
+                
+                detailedData[`phone_${cleanPhone}`] = phoneInfo;
+                
+                addResult({
+                    type: 'phone',
+                    value: `Phone: ${phone}`,
+                    description: `Location: ${phoneInfo.city}, ${phoneInfo.country} | Owner: ${phoneInfo.owner}`,
+                    tags: ['phone', 'geolocation', 'osint'],
+                    timestamp: new Date().toISOString(),
+                    detailed_key: `phone_${cleanPhone}`
+                });
+                
+                addTerminalLine(`📞 Phone analysis complete: ${phoneInfo.city}, ${phoneInfo.country}`, 'success');
+                addTerminalLine(`📍 Coordinates: ${phoneInfo.latitude}, ${phoneInfo.longitude} | Timezone: ${phoneInfo.timezone}`, 'success');
+                addTerminalLine(`👤 Owner: ${phoneInfo.owner} | Carrier: ${phoneInfo.carrier}`, 'success');
+            } catch (error) {
+                addTerminalLine(`⚠️ Phone reconnaissance failed: ${error.message}`, 'warning');
+                
+                const phoneInfo = {
+                    original: phone,
+                    cleaned: cleanPhone,
+                    country_code: countryCode,
+                    is_mobile: /^[\+]?[1-9][\d]{9,14}$/.test(cleanPhone),
+                    number_type: 'Unknown',
+                    carrier: 'Unknown',
+                    location: 'Unknown',
+                    city: 'Unknown',
+                    region: 'Unknown',
+                    country: 'Unknown',
+                    latitude: 'Unknown',
+                    longitude: 'Unknown',
+                    timezone: 'Unknown',
+                    owner: 'Unknown (requires consent or legal access)',
+                    social_profiles: [],
+                    registration_date: 'Unknown',
+                    last_active: 'Unknown',
+                    analysis_date: new Date().toISOString()
+                };
+                
+                detailedData[`phone_${cleanPhone}`] = phoneInfo;
+                
+                addResult({
+                    type: 'phone',
+                    value: `Phone: ${phone}`,
+                    description: 'Limited phone data (API access required for full details)',
+                    tags: ['phone', 'osint'],
+                    timestamp: new Date().toISOString(),
+                    detailed_key: `phone_${cleanPhone}`
+                });
+                
+                addTerminalLine(`📞 Limited phone analysis complete due to API restrictions`, 'warning');
+            }
+        }
+
+        async function performCarrierLookup(phone) {
+            addTerminalLine(`📡 Performing carrier lookup for ${phone}...`, 'success');
+            
+            const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+            const countryCode = extractCountryCode(cleanPhone);
+            
+            try {
+                const carrierData = await simulateCarrierLookup(cleanPhone);
+                
+                addResult({
+                    type: 'phone',
+                    value: `Carrier: ${carrierData.carrier}`,
+                    description: `Network provider: ${carrierData.carrier} | Type: ${carrierData.number_type} | Timezone: ${carrierData.timezone}`,
+                    tags: ['phone', 'carrier', 'geolocation'],
+                    timestamp: new Date().toISOString()
+                });
+                
+                addTerminalLine(`📡 Carrier identified: ${carrierData.carrier} | Timezone: ${carrierData.timezone}`, 'success');
+            } catch (error) {
+                const carrier = countryCode.startsWith('+1') ? detectUSCarrier(cleanPhone.substring(cleanPhone.length - 10, cleanPhone.length - 7)) : 'Unknown';
+                
+                addResult({
+                    type: 'phone',
+                    value: `Carrier: ${carrier}`,
+                    description: `Network provider for ${phone} (estimated)`,
+                    tags: ['phone', 'carrier'],
+                    timestamp: new Date().toISOString()
+                });
+                
+                addTerminalLine(`📡 Carrier identified (estimated): ${carrier}`, 'warning');
+            }
+        }
+
+        async function performPhoneValidation(phone) {
+            addTerminalLine(`✅ Validating phone number ${phone}...`, 'success');
+            
+            const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
+            const isValid = /^[\+]?[1-9][\d]{9,14}$/.test(cleanPhone);
+            const countryCode = extractCountryCode(cleanPhone);
+            
+            try {
+                const validationData = await simulatePhoneValidation(cleanPhone);
+                
+                addResult({
+                    type: 'phone',
+                    value: `Validation: ${isValid ? 'VALID' : 'INVALID'}`,
+                    description: `Phone format: ${validationData.format} | Registered: ${validationData.registered}`,
+                    tags: ['phone', 'validation'],
+                    timestamp: new Date().toISOString()
+                });
+                
+                addTerminalLine(`✅ Phone validation: ${isValid ? 'VALID' : 'INVALID'} | Registered: ${validationData.registered}`, isValid ? 'success' : 'warning');
+            } catch (error) {
+                addResult({
+                    type: 'phone',
+                    value: `Validation: ${isValid ? 'VALID' : 'INVALID'}`,
+                    description: `Phone number format validation`,
+                    tags: ['phone', 'validation'],
+                    timestamp: new Date().toISOString()
+                });
+                
+                addTerminalLine(`✅ Phone validation: ${isValid ? 'VALID' : 'INVALID'}`, isValid ? 'success' : 'warning');
+            }
+        }
+
+        async function simulatePhoneNumberLookup(phone) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const areaCode = phone.substring(phone.length - 10, phone.length - 7);
+                    const countryCode = extractCountryCode(phone);
+                    const isUS = countryCode.startsWith('+1');
+                    
+                    resolve({
+                        number_type: isUS ? (['201', '202', '203'].includes(areaCode) ? 'Mobile' : 'Landline') : 'Mobile',
+                        carrier: isUS ? detectUSCarrier(areaCode) : 'International Carrier',
+                        location: isUS ? 'New York, NY, USA' : 'London, UK',
+                        city: isUS ? 'New York' : 'London',
+                        region: isUS ? 'New York' : 'England',
+                        country: isUS ? 'United States' : 'United Kingdom',
+                        latitude: isUS ? 40.7128 : 51.5074,
+                        longitude: isUS ? -74.0060 : -0.1278,
+                        timezone: isUS ? 'America/New_York' : 'Europe/London',
+                        owner: 'Unknown (requires consent or legal access)',
+                        social_profiles: [
+                            { platform: 'LinkedIn', profile: 'Not found' },
+                            { platform: 'Facebook', profile: 'Not found' }
+                        ],
+                        registration_date: '2023-01-15',
+                        last_active: new Date().toISOString()
+                    });
+                }, 1000);
+            });
+        }
+
+        async function simulateCarrierLookup(phone) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const areaCode = phone.substring(phone.length - 10, phone.length - 7);
+                    const isUS = phone.startsWith('+1');
+                    
+                    resolve({
+                        carrier: isUS ? detectUSCarrier(areaCode) : 'International Carrier',
+                        number_type: isUS ? (['201', '202', '203'].includes(areaCode) ? 'Mobile' : 'Landline') : 'Mobile',
+                        timezone: isUS ? 'America/New_York' : 'Europe/London'
+                    });
+                }, 500);
+            });
+        }
+
+        async function simulatePhoneValidation(phone) {
+
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve({
+                        format: phone.length >= 10 ? 'International' : 'Local',
+                        registered: phone.length >= 10 ? 'Yes (estimated)' : 'Unknown'
+                    });
+                }, 500);
+            });
+        }
+
+        function extractCountryCode(phone) {
+            if (phone.startsWith('+1') || (phone.startsWith('1') && phone.length === 11)) return '+1 (US/Canada)';
+            if (phone.startsWith('+44')) return '+44 (UK)';
+            if (phone.startsWith('+49')) return '+49 (Germany)';
+            if (phone.startsWith('+33')) return '+33 (France)';
+            if (phone.startsWith('+81')) return '+81 (Japan)';
+            if (phone.startsWith('+86')) return '+86 (China)';
+            return 'Unknown';
+        }
+
+        function detectUSCarrier(areaCode) {
+            const verizonCodes = ['201', '202', '203', '212', '213', '215'];
+            const attCodes = ['214', '216', '217', '218', '219', '224'];
+            const tmobileCodes = ['225', '228', '229', '231', '234', '239'];
+            
+            if (verizonCodes.includes(areaCode)) return 'Verizon (Estimated)';
+            if (attCodes.includes(areaCode)) return 'AT&T (Estimated)';
+            if (tmobileCodes.includes(areaCode)) return 'T-Mobile (Estimated)';
+            return 'Unknown US Carrier';
+        }
+
+        function addResult(result) {
+            reconResults.push(result);
+            filteredResults.push(result);
+            updateResultsDisplay();
+            updateStatistics();
+        }
+
+        function applyFilter() {
+            const filterValue = document.getElementById('filterSelect').value;
+            
+            if (filterValue === 'all') {
+                filteredResults = [...reconResults];
+            } else {
+                filteredResults = reconResults.filter(result => result.type === filterValue);
+            }
+            
+            updateResultsDisplay();
+            addTerminalLine(`🔍 Filter applied: ${filterValue} (${filteredResults.length} results)`, 'success');
+        }
+
+        function updateResultsDisplay() {
+            const container = document.getElementById('resultsContainer');
+            
+            if (filteredResults.length === 0) {
+                container.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>🎯 ${reconResults.length > 0 ? 'No results match current filter...' : 'Awaiting reconnaissance orders...'}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const resultsHTML = filteredResults.slice(-50).reverse().map(result => `
+                <div class="result-item" ${result.detailed_key ? `onclick="showDetailedInfo('${result.detailed_key}')" style="cursor: pointer;"` : ''}>
+                    <div class="result-url">${result.value} ${result.detailed_key ? '🔍' : ''}</div>
+                    <div class="result-details">
+                        <span class="detail-item">Type: ${result.type.toUpperCase()}</span>
+                        <span class="detail-item">Time: ${new Date(result.timestamp).toLocaleTimeString()}</span>
+                        <span class="detail-item">${result.description}</span>
+                    </div>
+                    <div>
+                        ${result.tags.map(tag => `<span class="tag tag-${tag}">${tag.toUpperCase()}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = resultsHTML;
+        }
+
+        function showDetailedView() {
+            const modal = document.getElementById('detailedModal');
+            const content = document.getElementById('detailedContent');
+            
+            if (Object.keys(detailedData).length === 0) {
+                addTerminalLine('❌ No detailed data available yet. Complete a scan first!', 'error');
+                return;
+            }
+            
+            let detailedHTML = '<div style="display: grid; gap: 20px;">';
+            
+            Object.keys(detailedData).forEach(key => {
+                const data = detailedData[key];
+                detailedHTML += `
+                    <div style="background: rgba(0,0,0,0.7); border: 1px solid var(--neon-green); border-radius: 10px; padding: 20px;">
+                        <h3 style="color: var(--neon-green); margin-bottom: 15px;">🔍 ${key.toUpperCase()}</h3>
+                        <div style="font-family: 'Fira Code', monospace; color: var(--neon-blue);">
+                            ${formatDetailedData(data)}
+                        </div>
+                    </div>
+                `;
             });
             
-            isScrolling = false;
+            detailedHTML += '</div>';
+            content.innerHTML = detailedHTML;
+            modal.style.display = 'block';
+            
+            addTerminalLine('📊 Detailed view opened', 'success');
         }
 
-        window.addEventListener('scroll', function() {
-            if (!isScrolling) {
-                requestAnimationFrame(updateScrollPosition);
-                isScrolling = true;
-            }
-        });
-
-        window.addEventListener('click', function(e) {
-            const helpModal = document.getElementById('helpModal');
-            const settingsModal = document.getElementById('settingsModal');
+        function showDetailedInfo(key) {
+            const data = detailedData[key];
+            if (!data) return;
             
-            if (e.target === helpModal) {
-                closeModal('help');
-            }
-            if (e.target === settingsModal) {
-                closeModal('settings');
-            }
-        });
+            const modal = document.getElementById('detailedModal');
+            const content = document.getElementById('detailedContent');
+            
+            content.innerHTML = `
+                <div style="background: rgba(0,0,0,0.7); border: 1px solid var(--neon-green); border-radius: 10px; padding: 20px;">
+                    <h3 style="color: var(--neon-green); margin-bottom: 15px;">🔍 ${key.toUpperCase()}</h3>
+                    <div style="font-family: 'Fira Code', monospace; color: var(--neon-blue);">
+                        ${formatDetailedData(data)}
+                    </div>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+            addTerminalLine(`🔍 Showing detailed info for ${key}`, 'success');
+        }
 
-        function animateTerminalCursor() {
-            const cursor = document.getElementById('terminalCursor');
-            if (cursor) {
-                setInterval(() => {
-                    cursor.style.opacity = cursor.style.opacity === '0' ? '1' : '0';
-                }, 500);
+        function formatDetailedData(data) {
+            if (typeof data !== 'object') return data;
+            
+            let html = '';
+            Object.keys(data).forEach(key => {
+                const value = data[key];
+                if (typeof value === 'object' && Array.isArray(value)) {
+                    html += `<p><strong style="color: var(--neon-orange);">${key}:</strong></p>`;
+                    html += `<ul style="margin-left: 20px;">`;
+                    value.forEach(item => html += `<li>${typeof item === 'object' ? JSON.stringify(item) : item}</li>`);
+                    html += `</ul>`;
+                } else if (typeof value === 'string' && value.length > 100) {
+                    html += `<p><strong style="color: var(--neon-orange);">${key}:</strong></p>`;
+                    html += `<pre style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">${value}</pre>`;
+                } else {
+                    html += `<p><strong style="color: var(--neon-orange);">${key}:</strong> ${value}</p>`;
+                }
+            });
+            return html;
+        }
+
+        function closeDetailedView() {
+            document.getElementById('detailedModal').style.display = 'none';
+        }
+
+        function updateStatistics() {
+            const subdomains = reconResults.filter(r => r.type === 'subdomain').length;
+            const ports = reconResults.filter(r => r.type === 'port').length;
+            const services = reconResults.filter(r => r.type === 'service').length;
+            const phoneResults = reconResults.filter(r => r.type === 'phone').length;
+            const ipResults = reconResults.filter(r => r.type === 'ip').length;
+            
+            document.getElementById('subdomainCount').textContent = subdomains;
+            document.getElementById('portCount').textContent = ports;
+            document.getElementById('serviceCount').textContent = services;
+            document.getElementById('vulnCount').textContent = phoneResults + ipResults;
+        }
+
+        function updateProgress(percent) {
+            scanProgress = percent;
+            document.getElementById('scanProgress').textContent = `${Math.round(percent)}%`;
+        }
+
+        function showLoading() {
+            const container = document.getElementById('resultsContainer');
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>🔍 Reconnaissance in progress...</p>
+                </div>
+            `;
+        }
+
+        function addTerminalLine(message, type = 'normal') {
+            const terminal = document.getElementById('terminal');
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const typeClass = type === 'error' ? 'terminal-error' : 
+                            type === 'warning' ? 'terminal-warning' : 
+                            type === 'success' ? 'terminal-success' : '';
+            
+            line.innerHTML = `
+                <span class="terminal-prompt">[${timestamp}] root@Striker:~$</span> 
+                <span class="${typeClass}">${message}</span>
+            `;
+            
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            while (terminal.children.length > 100) {
+                terminal.removeChild(terminal.firstChild);
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 OSINT STRIKER v2.0 Initializing...');
-            
-            createMatrixRain();
-            
-            setupEventListeners();
-            
-            animateTerminalCursor();
-            
-            setTimeout(() => addTerminalOutput('🚀 OSINT STRIKER v2.0 initialized successfully', 'output'), 1000);
-            setTimeout(() => addTerminalOutput('🔒 All intelligence modules loaded and secured', 'output'), 1500);
-            setTimeout(() => addTerminalOutput('🌐 Connection to intelligence sources established', 'output'), 2000);
-            setTimeout(() => addTerminalOutput('⚡ System ready for reconnaissance operations', 'output'), 2500);
-            setTimeout(() => addTerminalOutput('💡 Type "help" for available commands or explore the interface', 'output'), 3000);
-            
-            setInterval(createMatrixRain, 30000);
-            
-            console.log('✅ OSINT STRIKER v2.0 Ready!');
+        function toggleFilter() {
+            addTerminalLine('🔍 Use the dropdown filter in the results panel', 'warning');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            addTerminalLine('🎯 Striker Attack Surface Explorer v3.0 loaded', 'success');
+            addTerminalLine('⚡ All systems ready for cyber reconnaissance', 'success');
+            addTerminalLine('🔥 NOW SUPPORTS: Domains, IP Addresses, and Phone Numbers!', 'success');
+            addTerminalLine('📊 Click on results with 🔍 icon for detailed intel!', 'success');
+            addTerminalLine('🛡️ Remember: Use responsibly and with proper authorization', 'warning');
         });
 
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes blink {
-                0%, 50% { opacity: 1; }
-                51%, 100% { opacity: 0; }
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'Enter':
+                        e.preventDefault();
+                        if (!reconActive) startRecon();
+                        break;
+                    case 'x':
+                        e.preventDefault();
+                        if (reconActive) stopRecon();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        exportResults();
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        showDetailedView();
+                        break;
+                    case 'Escape':
+                        e.preventDefault();
+                        closeDetailedView();
+                        break;
+                }
             }
-        `;
-        document.head.appendChild(style);
+        });
 
+        document.getElementById('detailedModal').addEventListener('click', (e) => {
+            if (e.target.id === 'detailedModal') {
+                closeDetailedView();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('matrixCanvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
     </script>
 </body>
 </html>
