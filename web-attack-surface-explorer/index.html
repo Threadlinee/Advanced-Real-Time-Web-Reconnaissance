@@ -85,6 +85,24 @@
             animation: glitchMove 0.1s linear infinite;
         }
 
+        /* Insanity mode intensifiers */
+        body.insanity {
+            animation: gradientShift 6s ease infinite;
+        }
+        body.insanity .glitch-overlay { animation-duration: 60ms; opacity: 0.5; }
+        body.insanity .title { filter: brightness(1.25) drop-shadow(0 0 60px var(--neon-pink)); }
+        body.insanity .btn { box-shadow: 0 16px 50px rgba(255, 0, 128, 0.25); }
+        body.insanity .result-item:hover { box-shadow: 0 18px 60px rgba(255, 0, 128, 0.18); }
+
+        /* Kaleidoscope canvas */
+        .kaleido-canvas { position: fixed; inset: 0; z-index: -3; pointer-events: none; opacity: 0.35; mix-blend-mode: screen; }
+        /* Noise canvas */
+        .noise-canvas { position: fixed; inset: 0; z-index: 99; pointer-events: none; opacity: 0.08; mix-blend-mode: overlay; display: none; }
+        body.insanity .noise-canvas { display: block; }
+        /* Cursor trail dot */
+        .cursor-trail-dot { position: fixed; width: 10px; height: 10px; border-radius: 50%; pointer-events: none; will-change: transform, opacity; filter: blur(0.5px) drop-shadow(0 0 8px rgba(0,255,65,0.8)); opacity: 0; }
+        body.insanity .cursor-trail-dot { opacity: 0.9; }
+
         /* Three.js background layer */
         #threeBg {
             position: fixed;
@@ -741,6 +759,8 @@
 </head>
 <body>
     <div class="cyber-grid"></div>
+    <canvas id="kaleidoCanvas" class="kaleido-canvas"></canvas>
+    <canvas id="noiseCanvas" class="noise-canvas"></canvas>
     <div id="threeBg"></div>
     <canvas class="matrix-canvas" id="matrixCanvas"></canvas>
     <div class="particles" id="particles"></div>
@@ -793,6 +813,7 @@
                 <button class="btn btn-purple" onclick="exportResults()">💾 EXPORT INTEL</button>
                 <button class="btn btn-orange" onclick="clearResults()">🗑️ CLEAR DATA</button>
                  <button class="btn" onclick="detectMyPublicIP()">🌐 MY IP</button>
+                 <button class="btn btn-purple" onclick="toggleInsanityMode()">🌀 INSANITY MODE</button>
             </div>
         </div>
 
@@ -2212,6 +2233,99 @@
             if (e.key === 'Escape') closeDetailedView();
         }
 
+        // =========== INSANITY MODE ===========
+        function toggleInsanityMode() {
+            document.body.classList.toggle('insanity');
+        }
+
+        function initInsanityFeatures() {
+            initKaleidoscope();
+            initNoise();
+            initCursorTrail();
+        }
+
+        function initKaleidoscope() {
+            const canvas = document.getElementById('kaleidoCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
+            resize();
+            window.addEventListener('resize', resize);
+            let t = 0;
+            const draw = () => {
+                if (!document.body.classList.contains('insanity')) { requestAnimationFrame(draw); return; }
+                t += 0.008;
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                const cx = canvas.width/2, cy = canvas.height/2;
+                const petals = 12;
+                for (let i=0;i<petals;i++) {
+                    const angle = (i/petals) * Math.PI*2 + t;
+                    const r = Math.min(cx, cy) * 0.6 + Math.sin(t*2 + i)*20;
+                    const x = cx + Math.cos(angle)*r;
+                    const y = cy + Math.sin(angle)*r;
+                    const grad = ctx.createRadialGradient(x,y,10, x,y, 220);
+                    grad.addColorStop(0, 'rgba(0,255,65,0.35)');
+                    grad.addColorStop(0.5, 'rgba(0,212,255,0.22)');
+                    grad.addColorStop(1, 'rgba(191,0,255,0)');
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(x,y, 220, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                requestAnimationFrame(draw);
+            };
+            draw();
+        }
+
+        function initNoise() {
+            const canvas = document.getElementById('noiseCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
+            resize();
+            window.addEventListener('resize', resize);
+            const render = () => {
+                if (!document.body.classList.contains('insanity')) { requestAnimationFrame(render); return; }
+                const w = canvas.width, h = canvas.height;
+                const imageData = ctx.createImageData(w, h);
+                for (let i = 0; i < imageData.data.length; i += 4) {
+                    const v = Math.random() * 255;
+                    imageData.data[i] = v;      // R
+                    imageData.data[i+1] = v;    // G
+                    imageData.data[i+2] = v;    // B
+                    imageData.data[i+3] = 14;   // A
+                }
+                ctx.putImageData(imageData, 0, 0);
+                requestAnimationFrame(render);
+            };
+            render();
+        }
+
+        function initCursorTrail() {
+            const makeDot = () => {
+                const el = document.createElement('div');
+                el.className = 'cursor-trail-dot';
+                el.style.background = `radial-gradient(circle at 30% 30%, rgba(0,255,65,0.95), rgba(0,212,255,0.85), rgba(191,0,255,0.8))`;
+                document.body.appendChild(el);
+                return el;
+            };
+            const pool = new Array(24).fill(0).map(makeDot);
+            let idx = 0;
+            window.addEventListener('mousemove', (e) => {
+                if (!document.body.classList.contains('insanity')) return;
+                const d = pool[idx++ % pool.length];
+                d.style.transition = 'none';
+                d.style.transform = `translate(${e.clientX-5}px, ${e.clientY-5}px)`;
+                d.style.opacity = '1';
+                requestAnimationFrame(() => {
+                    d.style.transition = 'transform 700ms ease, opacity 900ms ease';
+                    d.style.transform = `translate(${e.clientX + (Math.random()*30-15)}px, ${e.clientY + (Math.random()*30-15)}px) scale(0.3)`;
+                    d.style.opacity = '0';
+                });
+            });
+        }
+
         function updateStatistics() {
             const subdomains = reconResults.filter(r => r.type === 'subdomain').length;
             const ports = reconResults.filter(r => r.type === 'port').length;
@@ -2230,6 +2344,7 @@
         startCyberAnimations();
         initThreeBackground();
         initCardTilt();
+        initInsanityFeatures();
         
     </script>
 </body>
