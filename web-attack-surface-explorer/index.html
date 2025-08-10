@@ -359,6 +359,7 @@
             background: linear-gradient(45deg, #555, #777);
             cursor: not-allowed;
             opacity: 0.6;
+            pointer-events: none;
         }
 
         .btn::before {
@@ -641,6 +642,9 @@
         .tag-phone { background: #00b7eb; color: #fff; }
         .tag-carrier { background: #ff6f61; color: #fff; }
         .tag-geolocation { background: #2ecc71; color: #fff; }
+        .tag-social { background: #1abc9c; color: #fff; }
+        .tag-email { background: #95a5a6; color: #000; }
+        .tag-breach { background: #c0392b; color: #fff; }
 
         .terminal {
             background: #000;
@@ -820,12 +824,13 @@
                 
                 <div class="control-group">
                     <label class="label">🔍 Scan Mode</label>
-                    <select class="input" id="scanMode">
+                    <select class="input" id="scanMode" onchange="onScanModeChange()">
                         <option value="passive">Passive Reconnaissance</option>
                         <option value="active">Active Scanning</option>
                         <option value="comprehensive">Comprehensive Analysis</option>
                         <option value="insanity">Insanity Mode</option>
                         <option value="stealth">Stealth Mode</option>
+                        <option value="people">People OSINT</option>
                     </select>
                 </div>
                 
@@ -840,8 +845,27 @@
                 </div>
             </div>
             
+            <div id="peopleFields" class="form-grid" style="display:none; margin-top: 10px;">
+                <div class="control-group">
+                    <label class="label">👤 First Name</label>
+                    <input type="text" class="input" id="firstName" placeholder="John">
+                </div>
+                <div class="control-group">
+                    <label class="label">👤 Last Name</label>
+                    <input type="text" class="input" id="lastName" placeholder="Doe">
+                </div>
+                <div class="control-group">
+                    <label class="label">🔎 Handle/Username (optional)</label>
+                    <input type="text" class="input" id="handle" placeholder="johndoe">
+                </div>
+                <div class="control-group">
+                    <label class="label">📍 Location (optional)</label>
+                    <input type="text" class="input" id="location" placeholder="City / State / Country">
+                </div>
+            </div>
+            
             <div class="btn-grid">
-                <button class="btn" onclick="startRecon()">🚀 START RECONNAISSANCE</button>
+                <button id="startButton" class="btn" onclick="startRecon()">🚀 START RECONNAISSANCE</button>
                 <button class="btn btn-danger" onclick="stopRecon()">⛔ ABORT MISSION</button>
                 <button class="btn btn-purple" onclick="exportResults()">💾 EXPORT INTEL</button>
                 <button class="btn btn-orange" onclick="clearResults()">🗑️ CLEAR DATA</button>
@@ -893,6 +917,7 @@
                         <option value="whois">📝 WHOIS</option>
                         <option value="phone">📞 Phone Intel</option>
                         <option value="ip">🌍 IP Intel</option>
+                        <option value="social">👤 Social Profiles</option>
                     </select>
                     <button class="btn btn-purple" onclick="showDetailedView()">📊 DETAILED VIEW</button>
                 </div>
@@ -939,11 +964,28 @@
                                         <li><strong>Comprehensive</strong>: Balanced deep scan.</li>
                                         <li><strong>Insanity</strong>: Aggressive, high‑volume recon.</li>
                                         <li><strong>Stealth</strong>: Low‑noise, slower probing.</li>
+                                        <li><strong>People OSINT</strong>: Search by name/handle for social presence and email permutations.</li>
                                     </ul>
                                 </li>
                                 <li>Adjust <strong>Threads</strong> (concurrency) and <strong>Timeout</strong> (per request ms).</li>
                                 <li>Click <strong>START RECONNAISSANCE</strong>. Watch results update live.</li>
                             </ol>
+                        </section>
+                        <section>
+                            <h3 style="color: var(--neon-green); margin-bottom: 8px;">People OSINT</h3>
+                            <ol style="margin-left: 16px;">
+                                <li>Select <strong>Scan Mode → People OSINT</strong>.</li>
+                                <li>Fill <strong>First Name</strong> and <strong>Last Name</strong>, optionally add a <strong>Handle</strong> (username) and <strong>Location</strong>.</li>
+                                <li>Alternatively, type a full name in the main <strong>Target</strong> box (e.g., “John Doe”) and run a scan.</li>
+                                <li>Open <strong>DETAILED VIEW</strong> to see:
+                                    <ul style="margin-left: 16px;">
+                                        <li><strong>Social</strong>: Candidate profiles across GitHub, X/Twitter, Instagram, LinkedIn, Reddit, Snapchat, Discord.</li>
+                                        <li><strong>Emails</strong>: Common permutations with quick links to HaveIBeenPwned, DeHashed, LeakCheck, Hunter verify, and Gravatar.</li>
+                                        <li><strong>Usernames</strong>: Availability/probe links for candidate handles on major platforms.</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                            <p style="margin-top: 6px;">Note: Probes are non-invasive and rely on public endpoints. Always respect platform ToS and local laws.</p>
                         </section>
                         <section>
                             <h3 style="color: var(--neon-green); margin-bottom: 8px;">Controls</h3>
@@ -1002,15 +1044,32 @@
             const threads = parseInt(document.getElementById('threads')?.value) || 10;
             const timeout = parseInt(document.getElementById('timeout')?.value) || 5000;
 
-            if (!target) {
+            // In People mode, allow blank target and derive from fields
+            let effectiveTarget = target;
+            if (mode === 'people') {
+                const fn = document.getElementById('firstName')?.value.trim() || '';
+                const ln = document.getElementById('lastName')?.value.trim() || '';
+                const handle = document.getElementById('handle')?.value.trim() || '';
+                const loc = document.getElementById('location')?.value.trim() || '';
+                effectiveTarget = [fn, ln].filter(Boolean).join(' ');
+                if (!effectiveTarget && handle) effectiveTarget = handle;
+                if (!effectiveTarget) {
+                    addTerminalLine('ERROR: Provide a first/last name or handle for People OSINT', 'error');
+                    return;
+                }
+            }
+            if (!effectiveTarget) {
                 addTerminalLine('ERROR: Please specify a target', 'error');
                 return;
             }
 
-            const startButton = document.querySelector('button[onclick="startRecon()"]');
-            startButton.disabled = true;
+            const startButton = document.getElementById('startButton');
+            if (startButton) {
+                startButton.disabled = true;
+                startButton.setAttribute('aria-busy', 'true');
+            }
 
-            const targetType = detectTargetType(target);
+            const targetType = mode === 'people' ? 'people' : detectTargetType(effectiveTarget);
 
             reconActive = true;
             currentScanId = Date.now();
@@ -1019,7 +1078,7 @@
             detailedData = {};
             scanProgress = 0;
 
-            addTerminalLine(`🎯 Starting ${mode} reconnaissance on ${target} (Type: ${targetType})`, 'success');
+            addTerminalLine(`🎯 Starting ${mode} reconnaissance on ${effectiveTarget} (Type: ${targetType})`, 'success');
             addTerminalLine(`⚙️ Configuration: ${threads} threads, ${timeout}ms timeout`, 'success');
 
             updateProgress(0);
@@ -1028,13 +1087,16 @@
             detectMyPublicIP().catch(() => {});
 
             try {
-                await performReconnaissance(target, targetType, mode, threads, timeout);
+                await performReconnaissance(effectiveTarget, targetType, mode, threads, timeout);
             } catch (error) {
                 addTerminalLine(`❌ Reconnaissance failed: ${error.message}`, 'error');
             } finally {
                 reconActive = false;
                 updateProgress(100);
-                startButton.disabled = false;
+                if (startButton) {
+                    startButton.disabled = false;
+                    startButton.removeAttribute('aria-busy');
+                }
             }
         }
 
@@ -1044,6 +1106,11 @@
             reconActive = false;
             addTerminalLine('🛑 Reconnaissance aborted by user', 'warning');
             updateProgress(0);
+            const startButton = document.getElementById('startButton');
+            if (startButton) {
+                startButton.disabled = false;
+                startButton.removeAttribute('aria-busy');
+            }
         }
 
         function exportResults() {
@@ -1105,6 +1172,8 @@
             if (/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/.test(target)) {
                 return 'domain';
             }
+            // If contains a space and letters, treat as people name
+            if (/^[a-zA-Z][a-zA-Z\-']+(\s+[a-zA-Z][a-zA-Z\-']+)+$/.test(target)) return 'people';
             return 'domain';
         }
 
@@ -1122,6 +1191,12 @@
             terminal.appendChild(line);
             
             terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function onScanModeChange() {
+            const mode = document.getElementById('scanMode')?.value;
+            const people = document.getElementById('peopleFields');
+            if (people) people.style.display = mode === 'people' ? 'grid' : 'none';
         }
 
         function updateProgress(percent) {
@@ -1265,6 +1340,7 @@
             tasks.push(checkSecurityHeaders(target));
             tasks.push(probeCommonEndpoints(target));
         }
+                tasks.push(searchSocialProfiles(target));
             } else if (targetType === 'ip') {
         const isInsanity = mode === 'insanity';
         tasks.push(performIPRecon(target));
@@ -1276,6 +1352,7 @@
         if (isInsanity) {
             tasks.push(enrichIPIntel(target));
         }
+                tasks.push(searchSocialProfiles(target));
             } else if (targetType === 'phone') {
                 tasks.push(performPhoneRecon(target));
                 tasks.push(performCarrierLookup(target));
@@ -1283,6 +1360,14 @@
         if (mode === 'insanity') {
             tasks.push(performPhoneLeakProbes(target));
         }
+                tasks.push(searchSocialProfiles(target));
+            } else if (targetType === 'people') {
+                const fn = document.getElementById('firstName')?.value.trim() || '';
+                const ln = document.getElementById('lastName')?.value.trim() || '';
+                const handle = document.getElementById('handle')?.value.trim() || '';
+                const loc = document.getElementById('location')?.value.trim() || '';
+                tasks.push(performPeopleOsint({ name: target, firstName: fn, lastName: ln, handle, location: loc }));
+                tasks.push(checkUsernameAvailability({ name: target, firstName: fn, lastName: ln, handle }));
             }
             
             for (let i = 0; i < tasks.length; i++) {
@@ -2513,6 +2598,7 @@
             filteredResults.push(result);
             updateResultsDisplay();
             updateStatistics();
+            try { localStorage.setItem('last_click_fix', String(Date.now())); } catch {}
         }
 
         function applyFilter() {
@@ -2542,7 +2628,7 @@
             }
             
             const resultsHTML = filteredResults.slice(-50).reverse().map(result => `
-                <div class="result-item" ${result.detailed_key ? `onclick="showDetailedInfo('${result.detailed_key}')" style="cursor: pointer;"` : ''}>
+                <div class="result-item" data-dkey="${result.detailed_key || ''}" style="${result.detailed_key ? 'cursor: pointer;' : ''}">
                     <div class="result-url">${result.value} ${result.detailed_key ? '🔍' : ''}</div>
                     <div class="result-details">
                         <span class="detail-item">Type: ${result.type.toUpperCase()}</span>
@@ -2550,12 +2636,257 @@
                         <span class="detail-item">${result.description}</span>
                     </div>
                     <div>
-                        ${result.tags.map(tag => `<span class="tag tag-${tag}">${tag.toUpperCase()}</span>`).join('')}
+                        ${result.tags.map(tag => `<span class=\"tag tag-${tag}\" data-tag=\"${tag}\">${tag.toUpperCase()}</span>`).join('')}
                     </div>
                 </div>
             `).join('');
             
             container.innerHTML = resultsHTML;
+            container.querySelectorAll('.result-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    const tagEl = e.target.closest('.tag');
+                    if (tagEl && tagEl.dataset.tag) { e.stopPropagation(); filterByTag(tagEl.dataset.tag); return; }
+                    const key = item.getAttribute('data-dkey');
+                    if (key) { showDetailedInfo(key); }
+                });
+            });
+        }
+
+        // Tag filtering helper
+        function filterByTag(tag) {
+            const typeTags = new Set(['subdomain','dns','port','ssl','service','whois','phone','ip','social']);
+            if (typeTags.has(tag)) {
+                const select = document.getElementById('filterSelect');
+                if (select) select.value = tag;
+                applyFilter();
+                return;
+            }
+            filteredResults = reconResults.filter(r => (r.tags || []).includes(tag));
+            updateResultsDisplay();
+            addTerminalLine(`🏷️ Tag filter: ${tag.toUpperCase()} (${filteredResults.length} results)`, 'success');
+        }
+
+        // People OSINT core
+        async function performPeopleOsint({ name, firstName = '', lastName = '', handle = '', location = '' }) {
+            try {
+                const handles = buildHandleCandidatesFromName({ name, firstName, lastName, handle, location });
+                const emails = buildEmailPermutations(firstName || name.split(' ')[0] || '', lastName || name.split(' ')[1] || '');
+
+                // Social probes (non-invasive)
+                const socialKey = `social_${Date.now()}`;
+            const socialProfiles = await probeHandlesAcrossPlatforms(handles);
+                detailedData[socialKey] = { query: { name, firstName, lastName, handle, location }, handles, profiles: socialProfiles };
+                addResult({ type: 'social', value: `${socialProfiles.length} social profile sets`, description: 'Candidate social presence', tags: ['social','osint'], timestamp: new Date().toISOString(), detailed_key: socialKey });
+            // Curated quick links grouped by platform for nicer People OSINT
+            const peek = socialProfiles.flatMap(p => p.profiles.map(pp => ({ platform: pp.platform, url: pp.url })));
+            if (peek.length) {
+                const prettyKey = `people_links_${Date.now()}`;
+                const byPlatform = peek.reduce((acc, cur) => { (acc[cur.platform] ||= []).push(cur.url); return acc; }, {});
+                detailedData[prettyKey] = byPlatform;
+                addResult({ type: 'social', value: 'Quick Links', description: 'Curated People OSINT links', tags: ['social'], timestamp: new Date().toISOString(), detailed_key: prettyKey });
+            }
+
+                // Email permutations and tools
+                if (emails.length) {
+                    const emailKey = `emails_${Date.now()}`;
+                    const emailTools = emails.map(e => ({
+                        email: e,
+                        tools: [
+                            { platform: 'HaveIBeenPwned', url: `https://haveibeenpwned.com/unifiedsearch/${encodeURIComponent(e)}` },
+                            { platform: 'dehashed', url: `https://www.dehashed.com/search?query=${encodeURIComponent(e)}` },
+                            { platform: 'leakcheck', url: `https://leakcheck.io/?search=${encodeURIComponent(e)}` },
+                            { platform: 'hunter', url: `https://hunter.io/verify/${encodeURIComponent(e)}` }
+                        ],
+                        gravatar: { platform: 'gravatar', url: `https://www.gravatar.com/avatar/${md5(e.trim().toLowerCase())}?s=200&d=404` }
+                    }));
+                    detailedData[emailKey] = { emails: emails, checks: emailTools };
+                    addResult({ type: 'social', value: `${emails.length} email permutations`, description: 'Generated email candidates & tools', tags: ['email','osint'], timestamp: new Date().toISOString(), detailed_key: emailKey });
+                }
+            } catch (e) {
+                addTerminalLine(`⚠️ People OSINT error: ${e.message}`, 'warning');
+            }
+        }
+
+        async function searchSocialProfiles(query) {
+            try {
+                const type = detectTargetType(query);
+                let bases = [];
+                if (type === 'people') {
+                    const parts = String(query).split(/\s+/).filter(Boolean);
+                    bases = buildHandleCandidatesFromName({ name: query, firstName: parts[0] || '', lastName: parts[1] || '' });
+                } else if (type === 'domain') {
+                    const root = String(query).replace(/^https?:\/\//,'').split('/')[0];
+                    const base = root.split('.')[0];
+                    bases = [base, root.replace(/\./g,''), root.replace(/\.[^\.]+$/, '')];
+                } else if (type === 'ip' || type === 'phone') {
+                    bases = [String(query).replace(/\D/g,'')];
+                } else {
+                    bases = [String(query).replace(/\s+/g,'')];
+                }
+                const handles = Array.from(new Set(bases.map(s => s.toLowerCase()).slice(0, 20)));
+            const profiles = await probeHandlesAcrossPlatforms(handles);
+                const key = `social_${Date.now()}`;
+            detailedData[key] = { query, handles, profiles };
+            addResult({ type: 'social', value: `${profiles.length} social profile sets`, description: 'Candidate social presence', tags: ['social','osint'], timestamp: new Date().toISOString(), detailed_key: key });
+            // Pretty quick-links for People OSINT
+            const pretty = profiles.flatMap(p => p.profiles.map(pp => ({ platform: pp.platform, url: pp.url })));
+            if (pretty.length) {
+                const prettyKey = `people_links_${Date.now()}`;
+                // group by platform for nicer layout
+                const byPlatform = pretty.reduce((acc, cur) => { (acc[cur.platform] ||= []).push(cur.url); return acc; }, {});
+                detailedData[prettyKey] = byPlatform;
+                addResult({ type: 'social', value: 'Quick Links', description: 'Curated People OSINT links', tags: ['social'], timestamp: new Date().toISOString(), detailed_key: prettyKey });
+            }
+            } catch (e) {
+                addTerminalLine(`⚠️ Social search error: ${e.message}`, 'warning');
+            }
+        }
+
+        async function checkUsernameAvailability({ name, firstName = '', lastName = '', handle = '' }) {
+            const handles = buildHandleCandidatesFromName({ name, firstName, lastName, handle });
+            const profiles = handles.slice(0, 20).map(h => ({
+                handle: h,
+                profiles: platformList().map(p => ({ platform: p.key, url: p.url(h) }))
+            }));
+            const key = `usernames_${Date.now()}`;
+            detailedData[key] = { handles, profiles };
+            addResult({ type: 'social', value: `${handles.length} username candidates`, description: 'Availability candidate links generated', tags: ['social','username'], timestamp: new Date().toISOString(), detailed_key: key });
+        }
+
+        function buildHandleCandidatesFromName({ name = '', firstName = '', lastName = '', handle = '', location = '' }) {
+            const f = (firstName || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+            const l = (lastName || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+            const h = (handle || '').toLowerCase().replace(/[^a-z0-9_.-]/g,'');
+            const n = (name || '').toLowerCase().trim();
+            const tokens = n.split(/\s+/).filter(Boolean);
+            const base = new Set();
+            if (f) base.add(f);
+            if (l) base.add(l);
+            if (f && l) {
+                base.add(f + l);
+                base.add(f + '_' + l);
+                base.add(f + '.' + l);
+                base.add(f.charAt(0) + l);
+                base.add(f + l.charAt(0));
+                base.add(l + f);
+            }
+            if (tokens.length >= 2) {
+                const f2 = tokens[0]; const l2 = tokens[1];
+                base.add(f2 + l2);
+                base.add(f2 + '_' + l2);
+                base.add(f2 + '.' + l2);
+                base.add(f2.charAt(0) + l2);
+            }
+            if (h) base.add(h);
+            const loc = (location || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+            if (loc) {
+                Array.from(base).slice(0, 20).forEach(b => { base.add(b + loc); base.add(b + '_' + loc); });
+            }
+            return Array.from(base).slice(0, 30);
+        }
+
+        function buildEmailPermutations(firstName, lastName) {
+            const f = (firstName || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+            const l = (lastName || '').toLowerCase().replace(/[^a-z0-9]/g,'');
+            const parts = new Set();
+            if (f) parts.add(f);
+            if (l) parts.add(l);
+            if (f && l) {
+                parts.add(f + l);
+                parts.add(f + '.' + l);
+                parts.add(f + '_' + l);
+                parts.add(f.charAt(0) + l);
+                parts.add(f + l.charAt(0));
+            }
+            const localParts = Array.from(parts);
+            const domains = ['gmail.com','outlook.com','yahoo.com','icloud.com','proton.me'];
+            const emails = [];
+            localParts.forEach(lp => domains.forEach(d => emails.push(`${lp}@${d}`)));
+            return emails.slice(0, 40);
+        }
+
+        async function probeHandlesAcrossPlatforms(handles) {
+            const platforms = platformList();
+            const results = [];
+            for (const h of handles.slice(0, 12)) {
+                const profiles = [];
+                for (const p of platforms) {
+                    const url = p.url(h);
+                    try {
+                        await fetch(url, { method: 'GET', mode: 'no-cors', cache: 'no-cache' });
+                        profiles.push({ platform: p.key, url });
+                    } catch (_) {
+                        // ignore; still include as candidate link
+                        profiles.push({ platform: p.key, url });
+                    }
+                }
+                results.push({ handle: h, profiles });
+            }
+            return results;
+        }
+
+        function platformList() {
+            return [
+                { key: 'github', url: h => `https://github.com/${h}` },
+                { key: 'x', url: h => `https://x.com/${h}` },
+                { key: 'instagram', url: h => `https://www.instagram.com/${h}/` },
+                { key: 'linkedin', url: h => `https://www.linkedin.com/in/${h}/` },
+                { key: 'reddit', url: h => `https://www.reddit.com/user/${h}` },
+                { key: 'snapchat', url: h => `https://www.snapchat.com/add/${h}` },
+                { key: 'discord', url: h => `https://discord.com/users/${h}` }
+            ];
+        }
+
+        // Minimal MD5 implementation for Gravatar hashes
+        function md5(str) {
+            function cmn(q, a, b, x, s, t) { a = add32(add32(a, q), add32(x, t)); return add32((a << s) | (a >>> (32 - s)), b); }
+            function ff(a, b, c, d, x, s, t) { return cmn((b & c) | ((~b) & d), a, b, x, s, t); }
+            function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & (~d)), a, b, x, s, t); }
+            function hh(a, b, c, d, x, s, t) { return cmn(b ^ c ^ d, a, b, x, s, t); }
+            function ii(a, b, c, d, x, s, t) { return cmn(c ^ (b | (~d))), a, b, x, s, t; }
+            function add32(a, b) { return (a + b) & 0xFFFFFFFF; }
+            function md5cycle(x, k) {
+                let a = x[0], b = x[1], c = x[2], d = x[3];
+                a = ff(a,b,c,d,k[0],7,-680876936); d = ff(d,a,b,c,k[1],12,-389564586); c = ff(c,d,a,b,k[2],17,606105819); b = ff(b,c,d,a,k[3],22,-1044525330);
+                a = ff(a,b,c,d,k[4],7,-176418897); d = ff(d,a,b,c,k[5],12,1200080426); c = ff(c,d,a,b,k[6],17,-1473231341); b = ff(b,c,d,a,k[7],22,-45705983);
+                a = ff(a,b,c,d,k[8],7,1770035416); d = ff(d,a,b,c,k[9],12,-1958414417); c = ff(c,d,a,b,k[10],17,-42063); b = ff(b,c,d,a,k[11],22,-1990404162);
+                a = ff(a,b,c,d,k[12],7,1804603682); d = ff(d,a,b,c,k[13],12,-40341101); c = ff(c,d,a,b,k[14],17,-1502002290); b = ff(b,c,d,a,k[15],22,1236535329);
+                a = gg(a,b,c,d,k[1],5,-165796510); d = gg(d,a,b,c,k[6],9,-1069501632); c = gg(c,d,a,b,k[11],14,643717713); b = gg(b,c,d,a,k[0],20,-373897302);
+                a = gg(a,b,c,d,k[5],5,-701558691); d = gg(d,a,b,c,k[10],9,38016083); c = gg(c,d,a,b,k[15],14,-660478335); b = gg(b,c,d,a,k[4],20,-405537848);
+                a = gg(a,b,c,d,k[9],5,568446438); d = gg(d,a,b,c,k[14],9,-1019803690); c = gg(c,d,a,b,k[3],14,-187363961); b = gg(b,c,d,a,k[8],20,1163531501);
+                a = hh(a,b,c,d,k[5],4,-1444681467); d = hh(d,a,b,c,k[8],11,-51403784); c = hh(c,d,a,b,k[11],16,1735328473); b = hh(b,c,d,a,k[14],23,-1926607734);
+                a = hh(a,b,c,d,k[1],4,-378558); d = hh(d,a,b,c,k[4],11,-2022574463); c = hh(c,d,a,b,k[7],16,1839030562); b = hh(b,c,d,a,k[10],23,-35309556);
+                a = ii(a,b,c,d,k[0],6,-198630844); d = ii(d,a,b,c,k[7],10,1126891415); c = ii(c,d,a,b,k[14],15,-1416354905); b = ii(b,c,d,a,k[5],21,-57434055);
+                a = ii(a,b,c,d,k[12],6,1700485571); d = ii(d,a,b,c,k[3],10,-1894986606); c = ii(c,d,a,b,k[10],15,-1051523); b = ii(b,c,d,a,k[1],21,-2054922799);
+                a = ii(a,b,c,d,k[8],6,1873313359); d = ii(d,a,b,c,k[15],10,-30611744); c = ii(c,d,a,b,k[6],15,-1560198380); b = ii(b,c,d,a,k[13],21,1309151649);
+                x[0] = add32(a, x[0]); x[1] = add32(b, x[1]); x[2] = add32(c, x[2]); x[3] = add32(d, x[3]);
+            }
+            function md51(s) {
+                const n = s.length;
+                const state = [1732584193, -271733879, -1732584194, 271733878];
+                let i;
+                for (i = 64; i <= n; i += 64) md5cycle(state, md5blk(s.substring(i - 64, i)));
+                s = s.substring(i - 64);
+                const tail = new Array(16).fill(0);
+                for (i = 0; i < s.length; i++) tail[i >> 2] |= s.charCodeAt(i) << ((i % 4) << 3);
+                tail[i >> 2] |= 0x80 << ((i % 4) << 3);
+                if (i > 55) { md5cycle(state, tail); for (i = 0; i < 16; i++) tail[i] = 0; }
+                tail[14] = n * 8;
+                md5cycle(state, tail);
+                return state;
+            }
+            function md5blk(s) {
+                const md5blks = new Array(16);
+                for (let i = 0; i < 64; i += 4) { md5blks[i >> 2] = s.charCodeAt(i) + (s.charCodeAt(i + 1) << 8) + (s.charCodeAt(i + 2) << 16) + (s.charCodeAt(i + 3) << 24); }
+                return md5blks;
+            }
+            function rhex(n) {
+                const s = '0123456789abcdef';
+                let j, out = '';
+                for (j = 0; j < 4; j++) out += s.charAt((n >> (j * 8 + 4)) & 0x0F) + s.charAt((n >> (j * 8)) & 0x0F);
+                return out;
+            }
+            return md51(str).map(rhex).join('');
         }
 
         function showDetailedView() {
@@ -2622,8 +2953,16 @@
                 const value = data[key];
                 if (typeof value === 'object' && Array.isArray(value)) {
                     html += `<p><strong style="color: var(--neon-orange);">${key}:</strong></p>`;
-                    html += `<ul style="margin-left: 20px;">`;
-                    value.forEach(item => html += `<li>${typeof item === 'object' ? JSON.stringify(item) : item}</li>`);
+                    html += `<ul style=\"margin-left: 20px;\">`;
+                    value.forEach(item => {
+                        if (item && item.url) {
+                            html += `<li><a href=\"${item.url}\" target=\"_blank\" rel=\"noopener noreferrer\">${item.platform || 'profile'}</a></li>`;
+                        } else if (item && item.profiles) {
+                            html += `<li>${item.handle || ''}: ` + item.profiles.map(p => `<a href=\"${p.url}\" target=\"_blank\" rel=\"noopener noreferrer\">${p.platform}</a>`).join(', ') + `</li>`;
+                        } else {
+                            html += `<li>${typeof item === 'object' ? JSON.stringify(item) : item}</li>`;
+                        }
+                    });
                     html += `</ul>`;
                 } else if (typeof value === 'string' && value.length > 100) {
                     html += `<p><strong style="color: var(--neon-orange);">${key}:</strong></p>`;
@@ -2780,6 +3119,8 @@
             document.getElementById('portCount').textContent = ports;
             document.getElementById('serviceCount').textContent = services;
             document.getElementById('vulnCount').textContent = phoneResults + ipResults;
+            const hudResults = document.getElementById('hudResults');
+            if (hudResults) hudResults.textContent = reconResults.length.toString();
         }
 
         initMatrixBackground();
