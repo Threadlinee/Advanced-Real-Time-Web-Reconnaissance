@@ -1566,12 +1566,13 @@
                 if (response.ok) {
                     const ipData = await response.json();
                     
-                    detailedData[`ip_${ip}`] = ipData;
+                    const { isp: parsedIsp, asn: parsedAsn } = getISPAndASNFromGeo(ipData);
+                    detailedData[`ip_${ip}`] = { ...ipData, parsed_isp: parsedIsp || 'Unknown', parsed_asn: parsedAsn || null };
                     
                     addResult({
                         type: 'ip',
                         value: `${ip} (${ipData.city}, ${ipData.country_name})`,
-                        description: `ISP: ${ipData.org || 'Unknown'}`,
+                        description: `ISP: ${parsedIsp || ipData.org || 'Unknown'}${parsedAsn ? ` | ASN: ${parsedAsn}` : ''}`,
                         tags: ['ip', 'geolocation'],
                         timestamp: new Date().toISOString(),
                         detailed_key: `ip_${ip}`
@@ -1668,13 +1669,25 @@
                     last_active: simulated.last_active || 'Unknown',
                     analysis_date: new Date().toISOString()
                 };
+
+                // Enrich device prediction with brand-based model inference
+                const predictedModels = predictDeviceModels(cleanPhone, countryCode, phoneInfo.carrier);
+                if (predictedModels) {
+                    if (!phoneInfo.device_name || phoneInfo.device_name === 'Unknown' || /Generic/i.test(phoneInfo.device_name)) {
+                        phoneInfo.device_name = predictedModels.device_name;
+                    }
+                    if (!phoneInfo.device_model || phoneInfo.device_model === 'Unknown') {
+                        phoneInfo.device_model = predictedModels.device_model;
+                    }
+                    phoneInfo.possible_devices = predictedModels.possible_devices;
+                }
                 
                 detailedData[`phone_${cleanPhone}`] = phoneInfo;
                 
                 addResult({
                     type: 'phone',
                     value: `Phone: ${phone}`,
-                    description: `Location: ${phoneInfo.city}, ${phoneInfo.country} | Carrier: ${phoneInfo.carrier} | Device: ${phoneInfo.device_model}`,
+                    description: `Location: ${phoneInfo.city}, ${phoneInfo.country} | Carrier: ${phoneInfo.carrier} | Device: ${phoneInfo.device_model}${phoneInfo.possible_devices ? ` (e.g., ${phoneInfo.possible_devices.slice(0,3).join('/')})` : ''}`,
                     tags: ['phone', 'geolocation', 'osint', 'device'],
                     timestamp: new Date().toISOString(),
                     detailed_key: `phone_${cleanPhone}`
@@ -1683,7 +1696,7 @@
                 addTerminalLine(`📞 Phone analysis complete: ${phoneInfo.city}, ${phoneInfo.country}`, 'success');
                 addTerminalLine(`📍 Coordinates: ${phoneInfo.latitude}, ${phoneInfo.longitude} | Timezone: ${phoneInfo.timezone}`, 'success');
                 addTerminalLine(`👤 Owner: ${phoneInfo.owner} | Carrier: ${phoneInfo.carrier} | ISP: ${phoneInfo.isp}`, 'success');
-                addTerminalLine(`📱 Device: ${phoneInfo.device_name} (${phoneInfo.device_model})`, 'success');
+                addTerminalLine(`📱 Device: ${phoneInfo.device_name} (${phoneInfo.device_model})${phoneInfo.possible_devices ? ` | Examples: ${phoneInfo.possible_devices.slice(0,3).join(', ')}` : ''}`, 'success');
             } catch (error) {
                 addTerminalLine(`⚠️ Phone reconnaissance failed: ${error.message}`, 'warning');
                 
@@ -1744,6 +1757,78 @@
                 if (countryCode.startsWith('+1') && mapUS[area]) return mapUS[area];
                 if (countryCode.startsWith('+383') && mapXK[area]) return mapXK[area];
                 return null;
+            } catch { return null; }
+        }
+
+        function predictDeviceModels(phone, countryCode, carrier) {
+            try {
+                const normalizedCarrier = String(carrier || '').toLowerCase();
+                const isUS = countryCode.startsWith('+1');
+                const isUK = countryCode.startsWith('+44');
+                const isEU = /^\+(3[0-9]|4[0-9]|5[0-9])/.test(countryCode);
+                const isIN = countryCode.startsWith('+91');
+
+                const recentIphones = [
+                    'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15',
+                    'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14 Plus', 'iPhone 14',
+                    'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13'
+                ];
+                const recentSamsungS = ['Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24', 'Galaxy S23 Ultra', 'Galaxy S23+','Galaxy S23'];
+                const recentSamsungA = ['Galaxy A55', 'Galaxy A35', 'Galaxy A54', 'Galaxy A34'];
+                const googlePixels = ['Pixel 8 Pro', 'Pixel 8', 'Pixel 7 Pro', 'Pixel 7'];
+                const xiaomiFlagships = ['Xiaomi 14 Ultra', 'Xiaomi 14', 'Xiaomi 13T Pro'];
+                const oneplusFlagships = ['OnePlus 12', 'OnePlus 11'];
+                const oppoFlagships = ['OPPO Find X7 Ultra', 'OPPO Reno10 Pro+'];
+                const huaweiFlagships = ['Huawei P60 Pro', 'Huawei Mate 50 Pro'];
+
+                const brandFromCarrier = () => {
+                    if (/(verizon|at&t|t-mobile|us cellular)/.test(normalizedCarrier)) return 'Apple/Samsung/Google';
+                    if (/(ee|vodafone|o2|three)/.test(normalizedCarrier)) return 'Apple/Samsung/Google';
+                    if (/(jio|airtel|vi\b|vodafone idea)/.test(normalizedCarrier)) return 'Apple/Samsung/Xiaomi/OnePlus';
+                    if (/(telekom|orange|vodafone|tmobile)/.test(normalizedCarrier)) return 'Apple/Samsung/Xiaomi';
+                    if (/(rogers|bell|telus)/.test(normalizedCarrier)) return 'Apple/Samsung/Google';
+                    return 'Apple/Samsung';
+                };
+
+                let deviceName = 'Smartphone';
+                let primaryModel = 'Unknown';
+                let possibleDevices = [];
+
+                const brandHint = brandFromCarrier();
+                if (brandHint.includes('Apple')) {
+                    deviceName = 'Apple iPhone';
+                    possibleDevices = possibleDevices.concat(recentIphones);
+                    if (isUS || isUK || isEU) primaryModel = 'iPhone 15/14 series';
+                }
+                if (brandHint.includes('Samsung')) {
+                    deviceName = deviceName === 'Smartphone' ? 'Samsung Galaxy' : deviceName;
+                    possibleDevices = possibleDevices.concat(recentSamsungS, recentSamsungA);
+                    if (primaryModel === 'Unknown') primaryModel = 'Galaxy S24/S23 or A-series';
+                }
+                if (brandHint.includes('Google')) {
+                    possibleDevices = possibleDevices.concat(googlePixels);
+                    if (primaryModel === 'Unknown') primaryModel = 'Pixel 8/7 series';
+                }
+                if (isIN) {
+                    possibleDevices = possibleDevices.concat(xiaomiFlagships, oneplusFlagships, oppoFlagships);
+                    if (primaryModel === 'Unknown') primaryModel = 'Xiaomi/OnePlus/Oppo recent';
+                }
+                if (isEU && !isUK) {
+                    possibleDevices = possibleDevices.concat(xiaomiFlagships, oneplusFlagships);
+                }
+                if (/huawei/.test(normalizedCarrier)) {
+                    possibleDevices = possibleDevices.concat(huaweiFlagships);
+                }
+
+                if (!possibleDevices.length) {
+                    possibleDevices = ['iPhone 14/15', 'Galaxy S23/S24', 'Pixel 7/8'];
+                }
+
+                return {
+                    device_name: deviceName,
+                    device_model: primaryModel,
+                    possible_devices: possibleDevices
+                };
             } catch { return null; }
         }
 
@@ -1824,23 +1909,28 @@
                     }
                 } catch {}
 
+                const { isp: parsedIsp, asn: parsedAsn } = geo ? getISPAndASNFromGeo(geo) : { isp: null, asn: null };
+
                 const value = geo
                     ? `Your Public IP: ${ip} (${geo.city || 'Unknown'}, ${geo.country_name || geo.country || 'Unknown'})`
                     : `Your Public IP: ${ip}`;
 
                 const detailKey = `ip_self_${ip}`;
-                if (geo) detailedData[detailKey] = geo;
+                if (geo) detailedData[detailKey] = { ...geo, parsed_isp: parsedIsp || 'Unknown', parsed_asn: parsedAsn || null };
 
                 addResult({
                     type: 'ip',
                     value,
-                    description: `ISP: ${(geo && (geo.org || geo.org_name)) || 'Unknown'}`,
+                    description: `ISP: ${parsedIsp || (geo && (geo.org || geo.org_name)) || 'Unknown'}${parsedAsn ? ` | ASN: ${parsedAsn}` : ''}`,
                     tags: ['ip', 'self'],
                     timestamp: new Date().toISOString(),
                     ...(geo ? { detailed_key: detailKey } : {})
                 });
 
                 addTerminalLine(`🌐 Public IP detected: ${ip}`, 'success');
+                if (parsedIsp || parsedAsn) {
+                    addTerminalLine(`🏷️ ISP: ${parsedIsp || 'Unknown'}${parsedAsn ? ` | ASN: ${parsedAsn}` : ''}`, 'success');
+                }
             } catch (e) {
                 addTerminalLine(`⚠️ Public IP detection failed: ${e.message}`, 'warning');
             }
@@ -1902,6 +1992,35 @@
                 
                 addTerminalLine(`📡 Carrier identified (estimated): ${carrier}`, 'warning');
             }
+        }
+
+        function getISPAndASNFromGeo(geo) {
+            try {
+                // ipapi.co: { org: 'ISP Name', asn: 'AS1234' }
+                // ipinfo.io: { org: 'AS1234 ISP Name' }
+                if (!geo) return { isp: null, asn: null };
+                if (geo.org && geo.asn) {
+                    return { isp: geo.org, asn: String(geo.asn).replace(/^AS/i, 'AS') };
+                }
+                if (geo.org && !geo.asn) {
+                    const parsed = parseAsnOrg(geo.org);
+                    return { isp: parsed.isp, asn: parsed.asn };
+                }
+                if (geo.org_name) {
+                    const parsed = parseAsnOrg(geo.org_name);
+                    return { isp: parsed.isp, asn: parsed.asn };
+                }
+                return { isp: null, asn: null };
+            } catch { return { isp: null, asn: null }; }
+        }
+
+        function parseAsnOrg(orgString) {
+            try {
+                const text = String(orgString || '').trim();
+                const m = text.match(/^(AS\d+)\s+(.+)$/i);
+                if (m) return { asn: m[1].toUpperCase(), isp: m[2] };
+                return { asn: null, isp: text || null };
+            } catch { return { asn: null, isp: null }; }
         }
 
         async function performPhoneValidation(phone) {
