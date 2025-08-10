@@ -650,6 +650,7 @@
                 <button class="btn btn-danger" onclick="stopRecon()">⛔ ABORT MISSION</button>
                 <button class="btn btn-purple" onclick="exportResults()">💾 EXPORT INTEL</button>
                 <button class="btn btn-orange" onclick="clearResults()">🗑️ CLEAR DATA</button>
+                 <button class="btn" onclick="detectMyPublicIP()">🌐 MY IP</button>
             </div>
         </div>
 
@@ -733,6 +734,13 @@
         let filteredResults = [];
         let detailedData = {};
 
+            const STRIKER_CONFIG = {
+                VERIPHONE_KEY: '8459E975D8D14CF39F9B83BEE31AD7C3',
+                NUMLOOKUPAPI_KEY: 'num_live_r0BRllOXwHysBAs0tKhUIfbKNjhNd2teazyoJ6lk',
+                ABSTRACTAPI_KEY: '',
+                IPINFO_TOKEN: '560d1bed2cbd0c'
+            };
+
         async function startRecon() {
             if (reconActive) return;
 
@@ -763,6 +771,9 @@
 
             updateProgress(0);
             showLoading();
+
+            // Best-effort: detect user's public IP in parallel (non-blocking)
+            detectMyPublicIP().catch(() => {});
 
             try {
                 await performReconnaissance(target, targetType, mode, threads, timeout);
@@ -1400,29 +1411,33 @@
             const countryCode = extractCountryCode(cleanPhone);
             
             try {
-                const phoneData = await simulatePhoneNumberLookup(cleanPhone);
+                // Try live enrichment first (if API keys configured); fall back to local simulation
+                const [liveEnrichment, simulated] = await Promise.all([
+                    tryLiveDeviceModelLookup(cleanPhone).catch(() => null),
+                    simulatePhoneNumberLookup(cleanPhone)
+                ]);
                 
                 const phoneInfo = {
                     original: phone,
                     cleaned: cleanPhone,
                     country_code: countryCode,
                     is_mobile: /^[\+]?[1-9][\d]{9,14}$/.test(cleanPhone),
-                    number_type: phoneData.number_type || 'Unknown',
-                    carrier: phoneData.carrier || 'Unknown',
-                    isp: phoneData.isp || 'Unknown',
-                    device_name: phoneData.device_name || 'Unknown',
-                    device_model: phoneData.device_model || 'Unknown',
-                    location: phoneData.location || 'Unknown',
-                    city: phoneData.city || 'Unknown',
-                    region: phoneData.region || 'Unknown',
-                    country: phoneData.country || 'Unknown',
-                    latitude: phoneData.latitude || 'Unknown',
-                    longitude: phoneData.longitude || 'Unknown',
-                    timezone: phoneData.timezone || 'Unknown',
-                    owner: phoneData.owner || 'Unknown (requires consent or legal access)',
-                    social_profiles: phoneData.social_profiles || [],
-                    registration_date: phoneData.registration_date || 'Unknown',
-                    last_active: phoneData.last_active || 'Unknown',
+                    number_type: (liveEnrichment?.number_type) || simulated.number_type || 'Unknown',
+                    carrier: (liveEnrichment?.carrier) || simulated.carrier || 'Unknown',
+                    isp: (liveEnrichment?.isp) || simulated.isp || 'Unknown',
+                    device_name: (liveEnrichment?.device_name) || simulated.device_name || 'Unknown',
+                    device_model: (liveEnrichment?.device_model) || simulated.device_model || 'Unknown',
+                    location: simulated.location || 'Unknown',
+                    city: simulated.city || 'Unknown',
+                    region: simulated.region || 'Unknown',
+                    country: simulated.country || 'Unknown',
+                    latitude: simulated.latitude || 'Unknown',
+                    longitude: simulated.longitude || 'Unknown',
+                    timezone: simulated.timezone || 'Unknown',
+                    owner: simulated.owner || 'Unknown (requires consent or legal access)',
+                    social_profiles: simulated.social_profiles || [],
+                    registration_date: simulated.registration_date || 'Unknown',
+                    last_active: simulated.last_active || 'Unknown',
                     analysis_date: new Date().toISOString()
                 };
                 
@@ -1481,6 +1496,139 @@
                 
                 addTerminalLine(`📞 Limited phone analysis complete due to API restrictions`, 'warning');
             }
+        }
+
+        // Attempts to enrich phone intel using live APIs (if keys provided).
+        // Note: Most phone validation APIs do not return device model from phone number alone.
+        // This function safely falls back without throwing.
+        async function tryLiveDeviceModelLookup(phone) {
+            const result = {};
+
+            // Veriphone: carrier, line type; no device model
+            if (STRIKER_CONFIG.VERIPHONE_KEY) {
+                try {
+                    const resp = await fetch(`https://api.veriphone.io/v2/verify?key=${encodeURIComponent(STRIKER_CONFIG.VERIPHONE_KEY)}&phone=${encodeURIComponent(phone)}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data) {
+                            if (data.carrier) result.carrier = data.carrier;
+                            if (data.phone_type) result.number_type = data.phone_type;
+                            // Heuristic: if it's a mobile line, we at least classify as a smartphone
+                            if (data.phone_type && String(data.phone_type).toLowerCase().includes('mobile')) {
+                                result.device_name = 'Smartphone';
+                                result.device_model = 'Unknown';
+                            }
+                        }
+                    }
+                } catch {}
+            }
+
+            // Numlookupapi: carrier, line type
+            if (!result.carrier && STRIKER_CONFIG.NUMLOOKUPAPI_KEY) {
+                try {
+                    const resp = await fetch(`https://api.numlookupapi.com/v1/validate/${encodeURIComponent(phone)}?apikey=${encodeURIComponent(STRIKER_CONFIG.NUMLOOKUPAPI_KEY)}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data) {
+                            if (data.carrier) result.carrier = data.carrier;
+                            if (data.line_type) result.number_type = data.line_type;
+                            if (data.line_type && String(data.line_type).toLowerCase().includes('mobile')) {
+                                result.device_name = result.device_name || 'Smartphone';
+                                result.device_model = result.device_model || 'Unknown';
+                            }
+                        }
+                    }
+                } catch {}
+            }
+
+            // Abstract API: validation only
+            if (!result.number_type && STRIKER_CONFIG.ABSTRACTAPI_KEY) {
+                try {
+                    const resp = await fetch(`https://phonevalidation.abstractapi.com/v1/?api_key=${encodeURIComponent(STRIKER_CONFIG.ABSTRACTAPI_KEY)}&phone=${encodeURIComponent(phone)}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data && data.type) {
+                            result.number_type = data.type;
+                            if (String(data.type).toLowerCase().includes('mobile')) {
+                                result.device_name = result.device_name || 'Smartphone';
+                                result.device_model = result.device_model || 'Unknown';
+                            }
+                        }
+                        if (data && data.carrier) result.carrier = data.carrier;
+                    }
+                } catch {}
+            }
+
+            return Object.keys(result).length ? result : null;
+        }
+
+        // Detects the user's current public IP and adds IP intel (with geolocation if available)
+        async function detectMyPublicIP() {
+            addTerminalLine('🌐 Detecting your public IP...', 'success');
+            try {
+                const ip = await getPublicIP();
+                if (!ip) {
+                    addTerminalLine('⚠️ Could not determine public IP', 'warning');
+                    return;
+                }
+
+                let geo = null;
+                try {
+                    const url = STRIKER_CONFIG.IPINFO_TOKEN
+                        ? `https://ipinfo.io/${ip}?token=${encodeURIComponent(STRIKER_CONFIG.IPINFO_TOKEN)}`
+                        : `https://ipapi.co/${ip}/json/`;
+                    const resp = await fetch(url);
+                    if (resp.ok) {
+                        geo = await resp.json();
+                    }
+                } catch {}
+
+                const value = geo
+                    ? `Your Public IP: ${ip} (${geo.city || 'Unknown'}, ${geo.country_name || geo.country || 'Unknown'})`
+                    : `Your Public IP: ${ip}`;
+
+                const detailKey = `ip_self_${ip}`;
+                if (geo) detailedData[detailKey] = geo;
+
+                addResult({
+                    type: 'ip',
+                    value,
+                    description: `ISP: ${(geo && (geo.org || geo.org_name)) || 'Unknown'}`,
+                    tags: ['ip', 'self'],
+                    timestamp: new Date().toISOString(),
+                    ...(geo ? { detailed_key: detailKey } : {})
+                });
+
+                addTerminalLine(`🌐 Public IP detected: ${ip}`, 'success');
+            } catch (e) {
+                addTerminalLine(`⚠️ Public IP detection failed: ${e.message}`, 'warning');
+            }
+        }
+
+        async function getPublicIP() {
+            // Try multiple providers for resiliency
+            try {
+                const r1 = await fetch('https://api.ipify.org?format=json');
+                if (r1.ok) {
+                    const j = await r1.json();
+                    if (j && j.ip) return j.ip;
+                }
+            } catch {}
+            try {
+                const r2 = await fetch('https://ipinfo.io/json');
+                if (r2.ok) {
+                    const j = await r2.json();
+                    if (j && j.ip) return j.ip;
+                }
+            } catch {}
+            try {
+                const r3 = await fetch('https://ifconfig.co/json');
+                if (r3.ok) {
+                    const j = await r3.json();
+                    if (j && j.ip) return j.ip;
+                }
+            } catch {}
+            return null;
         }
 
         async function performCarrierLookup(phone) {
@@ -1852,6 +2000,7 @@
         initMatrixBackground();
         initParticleSystem();
         startCyberAnimations();
+        
     </script>
 </body>
 </html>
