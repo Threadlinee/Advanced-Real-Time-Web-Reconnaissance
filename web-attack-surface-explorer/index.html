@@ -755,6 +755,38 @@
             0% { transform: translate(0, 0); }
             100% { transform: translate(50px, 50px); }
         }
+
+        /* Floating Help Button */
+        .help-fab {
+            position: fixed;
+            left: 22px;
+            bottom: 22px;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            border: 2px solid rgba(0,255,65,0.6);
+            background: radial-gradient(circle at 30% 30%, rgba(0,255,65,0.25), rgba(0,212,255,0.18));
+            box-shadow: 0 10px 35px rgba(0,255,65,0.25), inset 0 0 18px rgba(0,255,65,0.2);
+            color: var(--neon-green);
+            font-weight: 800;
+            font-size: 24px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 950;
+            transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+            backdrop-filter: blur(6px) saturate(120%);
+        }
+        .help-fab:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 16px 45px rgba(0,255,65,0.35), inset 0 0 22px rgba(0,255,65,0.26);
+            background: radial-gradient(circle at 30% 30%, rgba(0,255,65,0.35), rgba(0,212,255,0.24));
+        }
+        @media (max-width: 600px) {
+            .help-fab { left: 14px; bottom: 14px; width: 48px; height: 48px; font-size: 22px; }
+        }
     </style>
 </head>
 <body>
@@ -884,12 +916,68 @@
             </div>
         </div>
 
+        <div id="helpModal" class="modal-overlay" aria-hidden="true">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h2 class="modal-title">❓ HELP & USER GUIDE</h2>
+                    <button class="btn btn-danger modal-close" onclick="closeHelp()">❌ CLOSE</button>
+                </div>
+                <div class="modal-content">
+                    <div style="display: grid; gap: 18px;">
+                        <section>
+                            <h3 style="color: var(--neon-green); margin-bottom: 8px;">What is this?</h3>
+                            <p>Striker Attack Surface Explorer helps you map a target's internet-facing assets in real time. Use only on systems you own or are authorized to test.</p>
+                        </section>
+                        <section>
+                            <h3 style="color: var(--neon-green); margin-bottom: 8px;">How to use</h3>
+                            <ol style="margin-left: 16px;">
+                                <li>Enter a <strong>Target</strong>: domain (example.com), IP (8.8.8.8), or phone (+1234567890).</li>
+                                <li>Pick a <strong>Scan Mode</strong>:
+                                    <ul style="margin-left: 16px;">
+                                        <li><strong>Passive</strong>: Safer OSINT; minimal interaction.</li>
+                                        <li><strong>Active</strong>: Probes common services and endpoints.</li>
+                                        <li><strong>Comprehensive</strong>: Balanced deep scan.</li>
+                                        <li><strong>Insanity</strong>: Aggressive, high‑volume recon.</li>
+                                        <li><strong>Stealth</strong>: Low‑noise, slower probing.</li>
+                                    </ul>
+                                </li>
+                                <li>Adjust <strong>Threads</strong> (concurrency) and <strong>Timeout</strong> (per request ms).</li>
+                                <li>Click <strong>START RECONNAISSANCE</strong>. Watch results update live.</li>
+                            </ol>
+                        </section>
+                        <section>
+                            <h3 style="color: var(--neon-green); margin-bottom: 8px;">Controls</h3>
+                            <ul style="margin-left: 16px;">
+                                <li><strong>ABORT MISSION</strong>: Stop the current scan.</li>
+                                <li><strong>EXPORT INTEL</strong>: Download results as JSON.</li>
+                                <li><strong>CLEAR DATA</strong>: Reset the dashboard.</li>
+                                <li><strong>MY IP</strong>: Detect your public IP.</li>
+                                <li><strong>INSANITY/MATRIX MODE</strong>: Visual toggles and extended features.</li>
+                                <li><strong>DETAILED VIEW</strong>: Open a modal with grouped intel; click a result row with 🔍 for item‑level details.</li>
+                                <li><strong>Filter</strong>: Show only Subdomains, DNS, Ports, SSL, Services, WHOIS, Phone, or IP intel.</li>
+                            </ul>
+                        </section>
+                        <section>
+                            <h3 style="color: var(--neon-green); margin-bottom: 8px;">Tips</h3>
+                            <ul style="margin-left: 16px;">
+                                <li>Respect rate‑limits; lower <strong>Threads</strong> and raise <strong>Timeout</strong> if endpoints throttle.</li>
+                                <li>Click any result with a 🔍 to view enriched details.</li>
+                                <li>Press <strong>Esc</strong> or click outside a modal to close it.</li>
+                            </ul>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="terminal neon-card card-tilt" id="terminal">
             <div class="terminal-line"><span class="terminal-prompt">root@Striker:~$</span> <span class="terminal-success">Ultimate Attack Surface Explorer v3.1 initialized</span></div>
             <div class="terminal-line"><span class="terminal-prompt">root@Striker:~$</span> <span class="terminal-success">All systems operational - Ready for reconnaissance</span></div>
             <div class="terminal-line"><span class="terminal-prompt">root@Striker:~$</span> <span class="terminal-warning">Remember: Use responsibly and with proper authorization</span></div>
         </div>
     </div>
+
+    <button class="help-fab" aria-label="Help & User Guide" title="Help & User Guide" onclick="openHelp()">?</button>
 
     <script>
         let reconActive = false;
@@ -2562,6 +2650,27 @@
             if (e.key === 'Escape') closeDetailedView();
         }
 
+        // Help modal controls
+        function openHelp() {
+            const modal = document.getElementById('helpModal');
+            modal.classList.add('is-active');
+            modal.setAttribute('aria-hidden', 'false');
+            document.addEventListener('keydown', onEscCloseHelp);
+            modal.addEventListener('click', onOverlayClickCloseHelp);
+        }
+        function closeHelp() {
+            const modal = document.getElementById('helpModal');
+            modal.classList.remove('is-active');
+            modal.setAttribute('aria-hidden', 'true');
+            document.removeEventListener('keydown', onEscCloseHelp);
+            modal.removeEventListener('click', onOverlayClickCloseHelp);
+        }
+        function onOverlayClickCloseHelp(e) {
+            if (e.target && e.target.id === 'helpModal') closeHelp();
+        }
+        function onEscCloseHelp(e) {
+            if (e.key === 'Escape') closeHelp();
+        }
         function toggleInsanityMode() {
             document.body.classList.toggle('insanity');
         }
