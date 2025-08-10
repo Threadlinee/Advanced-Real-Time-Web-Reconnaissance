@@ -445,6 +445,81 @@
             position: relative;
         }
 
+        /* Modal styling */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: radial-gradient(1200px 500px at 10% 0%, rgba(0,255,65,0.08), transparent 60%),
+                        radial-gradient(1000px 500px at 90% 10%, rgba(0,212,255,0.08), transparent 60%),
+                        rgba(0,0,0,0.88);
+            backdrop-filter: blur(10px) saturate(120%);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 220ms ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+        }
+        .modal-overlay.is-active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-card {
+            width: min(1100px, 90vw);
+            max-height: min(85vh, 900px);
+            overflow: hidden;
+            border-radius: 18px;
+            border: 1px solid rgba(0,255,65,0.25);
+            background: linear-gradient(180deg, rgba(8,8,8,0.9), rgba(12,12,12,0.82));
+            box-shadow: 0 0 50px rgba(0,255,65,0.18), 0 0 90px rgba(0,212,255,0.12);
+            transform: translateY(10px) scale(0.98);
+            opacity: 0.98;
+            transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 240ms ease;
+            position: relative;
+        }
+        .modal-overlay.is-active .modal-card {
+            transform: translateY(0) scale(1);
+            box-shadow: 0 10px 80px rgba(0,212,255,0.18), inset 0 0 40px rgba(0,255,65,0.06);
+        }
+        .modal-card::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            background: conic-gradient(from 0deg, var(--neon-green), var(--neon-blue), var(--neon-purple), var(--neon-pink), var(--neon-orange), var(--neon-green));
+            filter: blur(16px);
+            opacity: 0.25;
+            z-index: -1;
+            animation: hueRotate 10s linear infinite;
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px 22px;
+            border-bottom: 1px solid rgba(0,255,65,0.2);
+            background: linear-gradient(180deg, rgba(0,255,65,0.05), rgba(0,0,0,0));
+        }
+        .modal-title {
+            color: var(--neon-green);
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            text-shadow: 0 0 12px rgba(0,255,65,0.6);
+        }
+        .modal-content {
+            padding: 22px;
+            max-height: calc(85vh - 80px);
+            overflow: auto;
+            scrollbar-width: thin;
+        }
+        .modal-close {
+            min-width: 110px;
+        }
+
         .results-header {
             display: flex;
             justify-content: space-between;
@@ -776,13 +851,13 @@
             </div>
         </div>
 
-        <div id="detailedModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; backdrop-filter: blur(10px);">
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--glass-bg); border: 2px solid var(--neon-green); border-radius: 20px; padding: 30px; max-width: 80%; max-height: 80%; overflow-y: auto; min-width: 600px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 style="color: var(--neon-green); font-size: 1.5rem;">📊 DETAILED INTELLIGENCE REPORT</h2>
-                    <button class="btn btn-danger" onclick="closeDetailedView()" style="padding: 8px 15px;">❌ CLOSE</button>
+        <div id="detailedModal" class="modal-overlay" aria-hidden="true">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h2 class="modal-title">📊 DETAILED INTELLIGENCE REPORT</h2>
+                    <button class="btn btn-danger modal-close" onclick="closeDetailedView()">❌ CLOSE</button>
                 </div>
-                <div id="detailedContent"></div>
+                <div id="detailedContent" class="modal-content"></div>
             </div>
         </div>
 
@@ -2059,7 +2134,7 @@
             Object.keys(detailedData).forEach(key => {
                 const data = detailedData[key];
                 detailedHTML += `
-                    <div style="background: rgba(0,0,0,0.7); border: 1px solid var(--neon-green); border-radius: 10px; padding: 20px;">
+                    <div style="background: rgba(0,0,0,0.6); border: 1px solid rgba(0,255,65,0.25); border-radius: 12px; padding: 20px; box-shadow: 0 0 20px rgba(0,255,65,0.06);">
                         <h3 style="color: var(--neon-green); margin-bottom: 15px;">🔍 ${key.toUpperCase()}</h3>
                         <div style="font-family: 'Fira Code', monospace; color: var(--neon-blue);">
                             ${formatDetailedData(data)}
@@ -2070,7 +2145,10 @@
             
             detailedHTML += '</div>';
             content.innerHTML = detailedHTML;
-            modal.style.display = 'block';
+            modal.classList.add('is-active');
+            modal.setAttribute('aria-hidden', 'false');
+            document.addEventListener('keydown', onEscCloseModal);
+            modal.addEventListener('click', onOverlayClickClose);
             
             addTerminalLine('📊 Detailed view opened', 'success');
         }
@@ -2083,7 +2161,7 @@
             const content = document.getElementById('detailedContent');
             
             content.innerHTML = `
-                <div style="background: rgba(0,0,0,0.7); border: 1px solid var(--neon-green); border-radius: 10px; padding: 20px;">
+                <div style="background: rgba(0,0,0,0.6); border: 1px solid rgba(0,255,65,0.25); border-radius: 12px; padding: 20px; box-shadow: 0 0 20px rgba(0,255,65,0.06);">
                     <h3 style="color: var(--neon-green); margin-bottom: 15px;">🔍 ${key.toUpperCase()}</h3>
                     <div style="font-family: 'Fira Code', monospace; color: var(--neon-blue);">
                         ${formatDetailedData(data)}
@@ -2091,7 +2169,10 @@
                 </div>
             `;
             
-            modal.style.display = 'block';
+            modal.classList.add('is-active');
+            modal.setAttribute('aria-hidden', 'false');
+            document.addEventListener('keydown', onEscCloseModal);
+            modal.addEventListener('click', onOverlayClickClose);
             addTerminalLine(`🔍 Showing detailed info for ${key}`, 'success');
         }
 
@@ -2117,7 +2198,18 @@
         }
 
         function closeDetailedView() {
-            document.getElementById('detailedModal').style.display = 'none';
+            const modal = document.getElementById('detailedModal');
+            modal.classList.remove('is-active');
+            modal.setAttribute('aria-hidden', 'true');
+            document.removeEventListener('keydown', onEscCloseModal);
+            modal.removeEventListener('click', onOverlayClickClose);
+        }
+
+        function onOverlayClickClose(e) {
+            if (e.target && e.target.id === 'detailedModal') closeDetailedView();
+        }
+        function onEscCloseModal(e) {
+            if (e.key === 'Escape') closeDetailedView();
         }
 
         function updateStatistics() {
