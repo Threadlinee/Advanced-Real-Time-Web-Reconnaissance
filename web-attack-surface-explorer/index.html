@@ -25,6 +25,10 @@
             --dark-bg: #0a0a0a;
             --darker-bg: #050505;
             --glass-bg: rgba(10, 10, 10, 0.8);
+            --accent-cyan: #00e5ff;
+            --accent-magenta: #ff2bd6;
+            --accent-lime: #c6ff00;
+            --shadow-green: 0 0 30px rgba(0, 255, 65, 0.25), 0 0 60px rgba(0, 212, 255, 0.15);
         }
 
         body {
@@ -79,6 +83,19 @@
             z-index: 100;
             pointer-events: none;
             animation: glitchMove 0.1s linear infinite;
+        }
+
+        /* Three.js background layer */
+        #threeBg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -4;
+            pointer-events: none;
+            filter: drop-shadow(0 0 10px rgba(0,255,65,0.2));
+            opacity: 0.45;
         }
 
         @keyframes glitchMove {
@@ -160,6 +177,38 @@
             position: relative;
             overflow: hidden;
         }
+
+        /* Neon card upgrade */
+        .neon-card {
+            position: relative;
+            background: radial-gradient(1200px 400px at 10% -10%, rgba(0,255,65,0.08), transparent 35%),
+                        radial-gradient(800px 300px at 110% 0%, rgba(0,212,255,0.08), transparent 40%),
+                        rgba(10,10,10,0.72);
+            border: 1px solid rgba(0,255,65,0.25);
+            box-shadow: var(--shadow-green);
+        }
+        .neon-card::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            z-index: -1;
+            background: conic-gradient(from 0deg, var(--neon-green), var(--neon-blue), var(--neon-purple), var(--neon-pink), var(--neon-orange), var(--neon-green));
+            filter: blur(18px) saturate(120%);
+            opacity: 0.35;
+            border-radius: inherit;
+            animation: hueRotate 12s linear infinite;
+        }
+        @keyframes hueRotate {
+            to { filter: hue-rotate(360deg) blur(18px) saturate(120%); }
+        }
+
+        /* Tilt interaction baseline */
+        .card-tilt {
+            transform-style: preserve-3d;
+            transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
+            transition: transform 250ms ease, box-shadow 250ms ease;
+        }
+        .card-tilt:hover { box-shadow: 0 30px 80px rgba(0, 255, 65, 0.12); }
 
         @keyframes panelFloat {
             0%, 100% { transform: translateY(0) rotateX(0deg); }
@@ -275,8 +324,15 @@
             letter-spacing: 1px;
             position: relative;
             overflow: hidden;
-            background: linear-gradient(45deg, var(--neon-green), var(--neon-blue));
-            box-shadow: 0 10px 30px rgba(0, 255, 65, 0.3);
+            background: linear-gradient(120deg, var(--neon-green), var(--neon-blue), var(--neon-purple));
+            background-size: 250% 250%;
+            animation: gradientSlide 8s ease infinite;
+            box-shadow: 0 10px 30px rgba(0, 255, 65, 0.25);
+        }
+        @keyframes gradientSlide {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         .btn:disabled {
@@ -421,11 +477,12 @@
         .result-item {
             padding: 15px;
             margin-bottom: 10px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(0, 255, 65, 0.2);
+            background: linear-gradient(180deg, rgba(0,0,0,0.65), rgba(0,0,0,0.45));
+            border: 1px solid rgba(0, 255, 65, 0.22);
             border-radius: 10px;
-            transition: all 0.3s ease;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
             animation: slideInRight 0.5s ease-out;
+            backdrop-filter: blur(6px);
         }
 
         @keyframes slideInRight {
@@ -440,9 +497,12 @@
         }
 
         .result-item:hover {
-            border-color: var(--neon-green);
-            background: rgba(0, 255, 65, 0.1);
-            transform: translateX(10px);
+            border-color: var(--neon-blue);
+            background: radial-gradient(400px 120px at 5% 0%, rgba(0, 212, 255, 0.12), transparent 60%),
+                        radial-gradient(400px 120px at 95% 0%, rgba(0, 255, 65, 0.12), transparent 60%),
+                        rgba(0, 0, 0, 0.5);
+            transform: translateX(10px) translateZ(10px);
+            box-shadow: 0 12px 40px rgba(0, 212, 255, 0.12);
         }
 
         .result-url {
@@ -502,6 +562,12 @@
                 0 0 30px rgba(0, 255, 65, 0.3),
                 inset 0 0 30px rgba(0, 255, 65, 0.1);
         }
+
+        /* Global scrollbar styling */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--neon-green), var(--neon-blue)); border-radius: 8px; }
+        ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--neon-blue), var(--neon-purple)); }
 
         .terminal-line {
             margin-bottom: 8px;
@@ -600,6 +666,7 @@
 </head>
 <body>
     <div class="cyber-grid"></div>
+    <div id="threeBg"></div>
     <canvas class="matrix-canvas" id="matrixCanvas"></canvas>
     <div class="particles" id="particles"></div>
     <div class="glitch-overlay"></div>
@@ -610,7 +677,7 @@
             <p class="subtitle">Advanced Real-Time Web Reconnaissance & Security Analysis Platform</p>
         </div>
 
-        <div class="control-panel">
+        <div class="control-panel neon-card card-tilt">
             <h2 class="panel-title">
                 <svg class="icon" viewBox="0 0 24 24">
                     <path d="M12 2L2 7v10c0 5.55 3.84 9.64 9 11 5.16-1.36 9-5.45 9-11V7l-10-5z"/>
@@ -677,7 +744,7 @@
             </div>
         </div>
 
-        <div class="results-panel">
+        <div class="results-panel neon-card card-tilt">
             <div class="results-header">
                 <h2 class="panel-title">
                     <svg class="icon" viewBox="0 0 24 24">
@@ -719,7 +786,7 @@
             </div>
         </div>
 
-        <div class="terminal" id="terminal">
+        <div class="terminal neon-card card-tilt" id="terminal">
             <div class="terminal-line"><span class="terminal-prompt">root@Striker:~$</span> <span class="terminal-success">Ultimate Attack Surface Explorer v3.1 initialized</span></div>
             <div class="terminal-line"><span class="terminal-prompt">root@Striker:~$</span> <span class="terminal-success">All systems operational - Ready for reconnaissance</span></div>
             <div class="terminal-line"><span class="terminal-prompt">root@Striker:~$</span> <span class="terminal-warning">Remember: Use responsibly and with proper authorization</span></div>
@@ -1038,6 +1105,75 @@
             addTerminalLine(`📊 Found ${reconResults.length} attack surface elements`, 'success');
             filteredResults = [...reconResults];
             applyFilter();
+        }
+
+        // Lightweight neon three.js background
+        function initThreeBackground() {
+            try {
+                if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                const container = document.getElementById('threeBg');
+                if (!container) return;
+
+                const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                container.appendChild(renderer.domElement);
+
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+                camera.position.z = 8;
+
+                const group = new THREE.Group();
+                scene.add(group);
+
+                const geo1 = new THREE.TorusKnotGeometry(2.2, 0.35, 180, 32);
+                const mat1 = new THREE.MeshBasicMaterial({ color: 0x00ff41, wireframe: true, transparent: true, opacity: 0.18 });
+                const mesh1 = new THREE.Mesh(geo1, mat1);
+                group.add(mesh1);
+
+                const geo2 = new THREE.IcosahedronGeometry(3.2, 1);
+                const mat2 = new THREE.MeshBasicMaterial({ color: 0x00d4ff, wireframe: true, transparent: true, opacity: 0.08 });
+                const mesh2 = new THREE.Mesh(geo2, mat2);
+                group.add(mesh2);
+
+                const clock = new THREE.Clock();
+                function animate() {
+                    const t = clock.getElapsedTime();
+                    group.rotation.x = t * 0.08;
+                    group.rotation.y = t * 0.12;
+                    mesh2.rotation.z = t * 0.05;
+                    renderer.render(scene, camera);
+                    requestAnimationFrame(animate);
+                }
+                animate();
+
+                window.addEventListener('resize', () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+            } catch (e) {
+                // Fail silently if WebGL not available
+            }
+        }
+
+        // Subtle 3D tilt on cards
+        function initCardTilt() {
+            const cards = document.querySelectorAll('.card-tilt');
+            cards.forEach(card => {
+                const rect = () => card.getBoundingClientRect();
+                const onMove = (e) => {
+                    const r = rect();
+                    const px = (e.clientX - r.left) / r.width;
+                    const py = (e.clientY - r.top) / r.height;
+                    const rx = (py - 0.5) * -8; // rotateX
+                    const ry = (px - 0.5) * 12; // rotateY
+                    card.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+                };
+                const reset = () => { card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg)'; };
+                card.addEventListener('mousemove', onMove);
+                card.addEventListener('mouseleave', reset);
+            });
         }
 
         async function enumerateSubdomains(domain) {
@@ -2000,6 +2136,8 @@
         initMatrixBackground();
         initParticleSystem();
         startCyberAnimations();
+        initThreeBackground();
+        initCardTilt();
         
     </script>
 </body>
