@@ -38,3 +38,16 @@ Striker gives you a golden ticket to map a target’s publicly accessible digita
 - **Export**: Results downloaded in JSON—so you can load it into your own mess or a nice report.
 
 ---
+
+##  Acknowledgements
+
+Inspired by the absurdity of attack surface mapping, fueled by caffeine and questionable life choices.
+
+---
+
+# ☕ Support
+If you find this tool useful, drop a ⭐ or fork it. Contributions and proxy improvements are welcome.
+
+[![Buy Me a Coffee](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/G2G114SBVV)
+
+## Educational Purposes Only!! Stay safe, stay ethical. ✌️
